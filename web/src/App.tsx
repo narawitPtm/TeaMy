@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { useOrchestrator } from "./useOrchestrator";
 import { Universe } from "./Universe";
 import { Replay } from "./Replay";
+import { NewTeam } from "./NewTeam";
 import { ALL_STATES, STATE_VISUALS } from "./state-visuals";
-import type { Task } from "./types";
+import type { NewTeamConfig, Task } from "./types";
 
 const ACTIVE: Task["status"][] = ["queued", "running", "blocked", "waiting-human", "retrying"];
 
@@ -19,6 +20,7 @@ export default function App() {
   const [sending, setSending] = useState(false);
   const [replay, setReplay] = useState(false);
   const [focusFloorId, setFocusFloorId] = useState<string | null>(null);
+  const [showNewTeam, setShowNewTeam] = useState(false);
 
   const floorId = targetFloor || state.floors[0]?.id || "floor_main";
 
@@ -33,6 +35,7 @@ export default function App() {
     [state.tasks],
   );
 
+  const selFloor = state.floors.find((f) => f.id === floorId) ?? null;
   const selWorker = state.workers.find((w) => w.id === selectedWorker) ?? null;
   const selTask = selWorker ? state.tasks[state.workerTask[selWorker.id]] : undefined;
   const selEvents = selTask ? state.events.filter((e) => e.taskId === selTask.id) : [];
@@ -44,13 +47,18 @@ export default function App() {
     setSending(false);
   };
 
-  const addTeam = async () => {
-    const n = state.floors.length + 1;
-    const f = await createFloor(`Team ${n}`);
+  const addTeam = async (cfg: NewTeamConfig) => {
+    const f = await createFloor(cfg);
+    setShowNewTeam(false);
     if (f?.id) {
       setTargetFloor(f.id);
       setFocusFloorId(f.id);
     }
+  };
+
+  const focusTeam = (id: string) => {
+    setTargetFloor(id);
+    setFocusFloorId(id);
   };
 
   const removeTeam = async () => {
@@ -79,6 +87,7 @@ export default function App() {
           runningFloors={runningFloors}
           selectedWorker={selectedWorker}
           onSelectWorker={setSelectedWorker}
+          onFocusFloor={focusTeam}
           focusFloorId={focusFloorId}
         />
       )}
@@ -153,6 +162,18 @@ export default function App() {
         </div>
       )}
 
+      {/* active team config readout */}
+      {!replay && selFloor && (
+        <div className="hud teaminfo panel">
+          <span className="team-meta">
+            <b>model</b> {selFloor.model ? selFloor.model.replace("claude-", "") : "auto"} ·{" "}
+            <b>perm</b> {selFloor.permission_mode ?? "default"} ·{" "}
+            <b>dir</b> {selFloor.cwd ? selFloor.cwd : "sandbox"}
+            {selFloor.instruction ? " · ✎ custom instruction" : ""}
+          </span>
+        </div>
+      )}
+
       {/* command console (bottom-center) */}
       {!replay && (
         <div className="hud console panel">
@@ -174,7 +195,7 @@ export default function App() {
           <button className="primary" disabled={sending || runningFloors.has(floorId)} onClick={dispatch}>
             {sending ? "…" : runningFloors.has(floorId) ? "running" : "Dispatch"}
           </button>
-          <button className="ghost" onClick={addTeam}>＋ Team</button>
+          <button className="ghost" onClick={() => setShowNewTeam(true)}>＋ Team</button>
           <button
             className="ghost danger"
             onClick={removeTeam}
@@ -223,6 +244,14 @@ export default function App() {
             <div className="meta">no task bound yet</div>
           )}
         </aside>
+      )}
+
+      {showNewTeam && (
+        <NewTeam
+          defaultName={`Team ${state.floors.length + 1}`}
+          onCreate={addTeam}
+          onClose={() => setShowNewTeam(false)}
+        />
       )}
     </div>
   );

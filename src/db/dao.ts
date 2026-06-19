@@ -13,10 +13,16 @@ import { assertTransition, type TaskStatus } from "./states.js";
 // Row types (as stored / as returned)
 // ---------------------------------------------------------------------------
 
+export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions";
+
 export interface Floor {
   id: string;
   name: string;
   team: string | null;
+  instruction: string | null;
+  model: string | null; // null/'' = auto
+  cwd: string | null;
+  permission_mode: PermissionMode | null;
 }
 
 export interface Worker {
@@ -73,11 +79,30 @@ export class Dao {
   constructor(private readonly db: DB) {}
 
   // --- floors --------------------------------------------------------------
-  createFloor(input: { id?: string; name: string; team?: string }): Floor {
+  createFloor(input: {
+    id?: string;
+    name: string;
+    team?: string;
+    instruction?: string;
+    model?: string;
+    cwd?: string;
+    permissionMode?: PermissionMode;
+  }): Floor {
     const id = input.id ?? `floor_${randomUUID().slice(0, 8)}`;
     this.db
-      .prepare(`INSERT INTO floors (id, name, team) VALUES (?, ?, ?)`)
-      .run(id, input.name, input.team ?? null);
+      .prepare(
+        `INSERT INTO floors (id, name, team, instruction, model, cwd, permission_mode)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        input.name,
+        input.team ?? null,
+        input.instruction?.trim() || null,
+        input.model?.trim() || null,
+        input.cwd?.trim() || null,
+        input.permissionMode ?? null,
+      );
     return this.getFloor(id)!;
   }
 

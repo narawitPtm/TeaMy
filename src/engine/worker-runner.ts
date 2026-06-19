@@ -66,11 +66,17 @@ function buildEnv(
   return env;
 }
 
+export interface RunTaskOptions {
+  cwd?: string | null;
+  permissionMode?: "default" | "acceptEdits" | "bypassPermissions" | null;
+}
+
 export async function runTask(
   dao: Dao,
   task: Task,
   worker: Worker,
   emit: (e: Omit<EngineEvent, "ts">) => EngineEvent,
+  opts: RunTaskOptions = {},
 ): Promise<RunOutcome> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), WORKER_TIMEOUT_MS);
@@ -93,6 +99,8 @@ export async function runTask(
         abortController: controller,
         maxTurns: 6,
         settingSources: [], // clean room — don't load project CLAUDE.md/hooks
+        ...(opts.cwd ? { cwd: opts.cwd } : {}),
+        ...(opts.permissionMode ? { permissionMode: opts.permissionMode } : {}),
         env: env as Record<string, string>,
       },
     })) {

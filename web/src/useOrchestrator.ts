@@ -180,11 +180,11 @@ export function useOrchestrator() {
     [refresh],
   );
 
-  const createFloor = useCallback(async (name: string) => {
+  const createFloor = useCallback(async (config: import("./types").NewTeamConfig) => {
     const r = await fetch("/floors", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(config),
     }).then((x) => x.json());
     await refresh();
     return r.floor;

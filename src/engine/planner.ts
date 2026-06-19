@@ -81,6 +81,12 @@ export async function plan(
 ): Promise<PlanResult> {
   log(`[planner] decomposing command on floor ${floor.id}…`);
 
+  // Per-team config: forced model (else orchestrator default) + extra guidance.
+  const orchestratorModel = floor.model?.trim() || ORCHESTRATOR_MODEL;
+  const systemPrompt = floor.instruction?.trim()
+    ? `${PLAN_SYSTEM_PROMPT}\n\n## Team-specific guidance (follow this)\n${floor.instruction.trim()}`
+    : PLAN_SYSTEM_PROMPT;
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 120_000);
 
@@ -92,8 +98,8 @@ export async function plan(
     for await (const message of query({
       prompt: `Command to decompose:\n\n${command}`,
       options: {
-        model: ORCHESTRATOR_MODEL,
-        systemPrompt: PLAN_SYSTEM_PROMPT,
+        model: orchestratorModel,
+        systemPrompt,
         abortController: controller,
         maxTurns: 2,
         settingSources: [],
@@ -121,13 +127,15 @@ export async function plan(
   }
 
   // Persist. First pass creates rows (planner key -> db id), second wires deps.
+  // If the team forces a model, override every task's model with it.
+  const forcedModel = floor.model?.trim() || null;
   const keyToId = new Map<string, string>();
   for (const t of parsed.tasks) {
     const row = dao.createTask({
       floorId: floor.id,
       specialize: t.specialize,
       systemPrompt: t.system_prompt,
-      model: t.model,
+      model: forcedModel ?? t.model,
       input: t.input,
       status: "idle",
       dependsOn: [], // wired in the next pass once ids exist

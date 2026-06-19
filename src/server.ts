@@ -138,10 +138,23 @@ app.post("/approve", (req, res) => {
 });
 
 // Create a new team (floor). Each floor runs its own engine concurrently.
+const PERMISSION_MODES = new Set(["default", "acceptEdits", "bypassPermissions"]);
 app.post("/floors", (req, res) => {
-  const name = (req.body?.name ?? "").toString().trim() || "New Team";
-  const team = (req.body?.team ?? "").toString().trim() || undefined;
-  const floor = dao.createFloor({ name, team });
+  const b = req.body ?? {};
+  const name = (b.name ?? "").toString().trim() || "New Team";
+  const team = (b.team ?? "").toString().trim() || undefined;
+  const instruction = (b.instruction ?? "").toString();
+  const model = (b.model ?? "").toString().trim();
+  const cwd = (b.cwd ?? "").toString().trim();
+  const pm = (b.permissionMode ?? "").toString();
+  const floor = dao.createFloor({
+    name,
+    team,
+    instruction,
+    model,
+    cwd,
+    permissionMode: PERMISSION_MODES.has(pm) ? (pm as "default" | "acceptEdits" | "bypassPermissions") : undefined,
+  });
   emit({
     taskId: "-",
     floorId: floor.id,

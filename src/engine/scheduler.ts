@@ -172,11 +172,13 @@ export class Scheduler {
       runningTask = this.transition(this.dao.getTask(task.id)!, "running"); // approved
     }
 
+    const floor = this.dao.getFloor(this.opts.floorId);
     const outcome = await runTask(
       this.dao,
       { ...runningTask, input: injected },
       worker,
       this.opts.emit,
+      { cwd: floor?.cwd ?? null, permissionMode: floor?.permission_mode ?? null },
     );
 
     if (outcome.ok) {

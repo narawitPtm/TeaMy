@@ -11,10 +11,24 @@ export type TaskStatus =
   | "retrying"
   | "done";
 
+export type PermissionMode = "default" | "acceptEdits" | "bypassPermissions";
+
 export interface Floor {
   id: string;
   name: string;
   team: string | null;
+  instruction: string | null;
+  model: string | null;
+  cwd: string | null;
+  permission_mode: PermissionMode | null;
+}
+
+export interface NewTeamConfig {
+  name: string;
+  instruction?: string;
+  model?: string;
+  cwd?: string;
+  permissionMode?: PermissionMode;
 }
 
 export interface Worker {

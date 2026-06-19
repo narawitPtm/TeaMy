@@ -26,6 +26,7 @@ export interface UniverseProps {
   runningFloors: Set<string>;
   selectedWorker: string | null;
   onSelectWorker: (id: string | null) => void;
+  onFocusFloor?: (id: string) => void;
   focusFloorId?: string | null;
 }
 
@@ -93,6 +94,12 @@ export function Universe(props: UniverseProps) {
                 workerTask={props.workerTask}
                 selectedWorker={props.selectedWorker}
                 running={props.runningFloors.has(floor.id)}
+                onFocusFloor={() => {
+                  if (didPan()) return;
+                  const p = clusterPos(i);
+                  focusOn(p.x, p.y, Math.max(vp.scale, 0.85));
+                  props.onFocusFloor?.(floor.id);
+                }}
                 onSelectWorker={(id) => {
                   if (didPan()) return; // it was a pan, not a click
                   props.onSelectWorker(props.selectedWorker === id ? null : id);

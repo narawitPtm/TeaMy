@@ -24,7 +24,11 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS floors (
   id    TEXT PRIMARY KEY,
   name  TEXT NOT NULL,
-  team  TEXT
+  team  TEXT,
+  instruction     TEXT,   -- extra orchestrator guidance for this team's plans
+  model           TEXT,   -- '' / null = auto (planner picks per task); else forced
+  cwd             TEXT,   -- working directory workers operate in (optional)
+  permission_mode TEXT    -- 'default' | 'acceptEdits' | 'bypassPermissions'
 );
 
 CREATE TABLE IF NOT EXISTS workers (
@@ -99,5 +103,16 @@ function migrate(db: DB): void {
   }
   if (!cols.has("worker_id")) {
     db.exec(`ALTER TABLE tasks ADD COLUMN worker_id TEXT`);
+  }
+  const fcols = new Set(
+    (db.prepare(`PRAGMA table_info(floors)`).all() as Array<{ name: string }>).map((c) => c.name),
+  );
+  for (const [col, ddl] of [
+    ["instruction", "ALTER TABLE floors ADD COLUMN instruction TEXT"],
+    ["model", "ALTER TABLE floors ADD COLUMN model TEXT"],
+    ["cwd", "ALTER TABLE floors ADD COLUMN cwd TEXT"],
+    ["permission_mode", "ALTER TABLE floors ADD COLUMN permission_mode TEXT"],
+  ] as const) {
+    if (!fcols.has(col)) db.exec(ddl);
   }
 }

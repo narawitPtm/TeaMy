@@ -19,6 +19,7 @@ export interface ClusterProps {
   workerTask: Record<string, string>;
   selectedWorker: string | null;
   onSelectWorker: (id: string) => void;
+  onFocusFloor?: () => void;
   running: boolean;
 }
 
@@ -31,6 +32,7 @@ export function Cluster({
   workerTask,
   selectedWorker,
   onSelectWorker,
+  onFocusFloor,
   running,
 }: ClusterProps) {
   const n = workers.length;
@@ -42,9 +44,14 @@ export function Cluster({
 
   return (
     <g className="cluster">
-      {/* faint system ring + name plate */}
+      {/* faint system ring + clickable name plate (click to focus this team) */}
       <circle cx={cx} cy={cy} r={RADIUS + 46} className="system-ring" />
-      <g transform={`translate(${cx}, ${cy - RADIUS - 70})`}>
+      <g
+        className="nameplate-hit"
+        transform={`translate(${cx}, ${cy - RADIUS - 70})`}
+        onClick={onFocusFloor}
+        style={{ cursor: onFocusFloor ? "pointer" : "default" }}
+      >
         <rect x={-92} y={-17} width={184} height={30} rx={15} className="nameplate" />
         <text className="floor-name" textAnchor="middle" y={3}>
           {floor.name.toUpperCase()}
