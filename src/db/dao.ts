@@ -91,6 +91,11 @@ export class Dao {
     return this.db.prepare(`SELECT * FROM floors ORDER BY id`).all() as Floor[];
   }
 
+  /** Delete a floor; ON DELETE CASCADE removes its workers/tasks/events too. */
+  deleteFloor(id: string): void {
+    this.db.prepare(`DELETE FROM floors WHERE id = ?`).run(id);
+  }
+
   // --- workers -------------------------------------------------------------
   createWorker(input: {
     id?: string;

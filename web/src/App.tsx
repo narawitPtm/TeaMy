@@ -8,7 +8,7 @@ import type { Task } from "./types";
 const ACTIVE: Task["status"][] = ["queued", "running", "blocked", "waiting-human", "retrying"];
 
 export default function App() {
-  const { state, sendCommand, saveApiKey, approve, createFloor } = useOrchestrator();
+  const { state, sendCommand, saveApiKey, approve, createFloor, removeFloor } = useOrchestrator();
   const [command, setCommand] = useState(
     "Research three deep-sea creatures, write a fun fact about each, then combine them into one blurb and give it a catchy title.",
   );
@@ -51,6 +51,19 @@ export default function App() {
       setTargetFloor(f.id);
       setFocusFloorId(f.id);
     }
+  };
+
+  const removeTeam = async () => {
+    const f = state.floors.find((x) => x.id === floorId);
+    if (!f) return;
+    if (runningFloors.has(floorId)) {
+      alert(`"${f.name}" is running — wait for it to finish before removing.`);
+      return;
+    }
+    if (!confirm(`Remove team "${f.name}" and all its tasks? This cannot be undone.`)) return;
+    if (selWorker?.floor_id === floorId) setSelectedWorker(null);
+    await removeFloor(floorId);
+    setTargetFloor("");
   };
 
   return (
@@ -162,6 +175,14 @@ export default function App() {
             {sending ? "…" : runningFloors.has(floorId) ? "running" : "Dispatch"}
           </button>
           <button className="ghost" onClick={addTeam}>＋ Team</button>
+          <button
+            className="ghost danger"
+            onClick={removeTeam}
+            disabled={state.floors.length <= 1 || runningFloors.has(floorId)}
+            title={runningFloors.has(floorId) ? "team is running" : "remove this team"}
+          >
+            🗑 Team
+          </button>
           <button className="ghost" onClick={() => setReplay(true)}>⏪ Replay</button>
         </div>
       )}

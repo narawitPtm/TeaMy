@@ -155,6 +155,23 @@ app.post("/floors", (req, res) => {
 
 // Per-floor busy guard — different floors run concurrently, same floor serializes.
 const busyFloors = new Set<string>();
+
+// Remove a team (floor) and everything under it.
+app.delete("/floors/:id", (req, res) => {
+  const id = req.params.id;
+  const floor = dao.getFloor(id);
+  if (!floor) {
+    res.status(404).json({ error: `no such floor: ${id}` });
+    return;
+  }
+  if (busyFloors.has(id)) {
+    res.status(409).json({ error: `team ${id} is running; stop it before removing` });
+    return;
+  }
+  dao.deleteFloor(id);
+  emit({ taskId: "-", floorId: id, workerId: null, type: "floor-deleted", status: null, payload: { id } });
+  res.json({ removed: id });
+});
 app.post("/command", (req, res) => {
   const command = (req.body?.command ?? "").toString().trim();
   const floorId = (req.body?.floorId ?? defaultFloor.id).toString();

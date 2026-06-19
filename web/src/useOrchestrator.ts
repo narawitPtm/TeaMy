@@ -148,7 +148,12 @@ export function useOrchestrator() {
           if (refreshTimer.current) clearTimeout(refreshTimer.current);
           refreshTimer.current = setTimeout(() => void refresh(), 400);
         }
-        if (ev.type === "run-complete" || ev.type === "run-error" || ev.type === "floor-created")
+        if (
+          ev.type === "run-complete" ||
+          ev.type === "run-error" ||
+          ev.type === "floor-created" ||
+          ev.type === "floor-deleted"
+        )
           void refresh();
       }
     };
@@ -185,6 +190,12 @@ export function useOrchestrator() {
     return r.floor;
   }, [refresh]);
 
+  const removeFloor = useCallback(async (id: string) => {
+    const r = await fetch(`/floors/${encodeURIComponent(id)}`, { method: "DELETE" }).then((x) => x.json());
+    await refresh();
+    return r;
+  }, [refresh]);
+
   const approve = useCallback(async (taskId: string, approved: boolean) => {
     return fetch("/approve", {
       method: "POST",
@@ -193,5 +204,5 @@ export function useOrchestrator() {
     }).then((r) => r.json());
   }, []);
 
-  return { state, sendCommand, saveApiKey, approve, createFloor };
+  return { state, sendCommand, saveApiKey, approve, createFloor, removeFloor };
 }
