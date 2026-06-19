@@ -89,8 +89,17 @@ pauses it in `waiting-human` until a human decides via `POST /approve`
 (approve → runs, reject → fails). The UI shows an approval banner, inspector
 buttons, and the gated planet's own `waiting-human` state.
 
+## Planet sprites (Phase 7)
+
+Worker planets render generated sprites (`web/scripts/gen-planets.mjs` →
+`web/public/assets/planets/`), chosen per-worker by a stable id hash, loaded
+through the `PlanetSprite` swap seam in `web/src/Planet.tsx`. State animation
+(rings/shake/blink/glow) composes on top, untouched — so swapping these for
+Deep-Fold PNGs is just repointing the seam's `href`. Gallery: `/gallery.html`.
+Regenerate: `cd web && npm run gen-planets`.
+
 ## Deferred on purpose
 
 Per-worker API-key billing (wire exists, untested until a key is available),
-replay (task_events already logs everything), nicer planet sprites (swap seam is in
+replay (task_events already logs everything), more planet sprites (swap seam is in
 `web/src/Planet.tsx`).

@@ -1,19 +1,44 @@
 import type { TaskStatus } from "./types";
 import { STATE_VISUALS } from "./state-visuals";
 
+// Number of planet sprite assets in public/assets/planets/ (planet-0..N-1.svg).
+const SPRITE_COUNT = 8;
+
+/** Stable hash so a given worker always gets the same planet design. */
+function spriteIndex(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h) % SPRITE_COUNT;
+}
+
 /**
- * SPRITE SEAM — swap this one function to use Deep-Fold planet PNGs later.
- * It draws the planet body ONLY; all state animation (rings, shake, blink) is
- * applied by <Planet> around it, so swapping the sprite never touches state
- * logic. To use an image:  return <image href={...} x={-r} y={-r} ... />
+ * SPRITE SEAM — the ONLY place the planet's appearance is sourced.
+ *
+ * It draws the planet body ONLY; all state animation (signal rings, shake,
+ * blink, glow) is applied by <Planet> around it, so swapping the sprite source
+ * never touches state logic. Currently loads generated SVG sprites from
+ * public/assets/planets/. To use Deep-Fold PNGs instead, just point `href` at
+ * the PNGs (same centered placement, same call site) — nothing else changes.
+ *
+ * The sprite art has the disc at radius 48 within a 120-unit viewBox, so an
+ * image of width 2.5r renders the disc at ~r (matching the glow/rings).
  */
-function PlanetSprite({ r, color }: { r: number; color: string }) {
+function PlanetSprite({ r, seed, fallbackColor }: { r: number; seed: string; fallbackColor: string }) {
+  const idx = spriteIndex(seed);
   return (
     <>
-      <circle r={r} fill={color} />
-      {/* simple stylized surface so different planets read as distinct */}
-      <circle r={r} fill="url(#planetShade)" />
-      <circle r={r * 0.55} cx={-r * 0.25} cy={-r * 0.3} fill="rgba(255,255,255,0.08)" />
+      {/* fallback disc shows if the asset fails to load (keeps state readable) */}
+      <circle r={r} fill={fallbackColor} opacity={0.25} />
+      <image
+        href={`/assets/planets/planet-${idx}.svg`}
+        x={-r * 1.25}
+        y={-r * 1.25}
+        width={r * 2.5}
+        height={r * 2.5}
+      />
     </>
   );
 }
@@ -25,11 +50,13 @@ export interface PlanetProps {
   status: TaskStatus;
   name: string;
   model?: string;
+  /** stable seed (e.g. worker id) picking which planet sprite to show */
+  spriteSeed?: string;
   selected?: boolean;
   onClick?: () => void;
 }
 
-export function Planet({ x, y, r = 26, status, name, model, selected, onClick }: PlanetProps) {
+export function Planet({ x, y, r = 26, status, name, model, spriteSeed, selected, onClick }: PlanetProps) {
   const v = STATE_VISUALS[status];
   // Positioning lives on the OUTER group (SVG transform attr). Animations live
   // on the INNER group so a CSS `transform` (shake) never clobbers the planet's
@@ -67,7 +94,7 @@ export function Planet({ x, y, r = 26, status, name, model, selected, onClick }:
 
       {selected && <circle r={r + 13} fill="none" stroke="#ffffff" strokeWidth={1} opacity={0.5} />}
 
-      <PlanetSprite r={r} color={v.color} />
+      <PlanetSprite r={r} seed={spriteSeed ?? name} fallbackColor={v.color} />
 
       {/* waiting-human: clear blinking "needs you" marker, distinct from blocked */}
       {v.needsYou && (

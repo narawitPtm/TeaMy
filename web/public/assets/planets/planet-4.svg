@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <radialGradient id="limb-4" cx="38%" cy="34%" r="75%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+    </radialGradient>
+    <clipPath id="disc-4"><circle cx="60" cy="60" r="48"/></clipPath><radialGradient id="des4" cx="40%" cy="36%" r="78%"><stop offset="0%" stop-color="#d9763e"/><stop offset="100%" stop-color="#7f3417"/></radialGradient></defs>
+  
+  <g clip-path="url(#disc-4)">
+    <circle cx="60" cy="60" r="48" fill="url(#des4)"/>
+    <ellipse cx="61.6" cy="93.9" rx="7.3" ry="5.5" fill="#b85a2c" opacity="0.55"/><ellipse cx="55.2" cy="38.9" rx="8.4" ry="5.9" fill="#b85a2c" opacity="0.55"/><ellipse cx="75.6" cy="83.2" rx="7.6" ry="6.0" fill="#b85a2c" opacity="0.55"/><ellipse cx="61.8" cy="69.5" rx="9.4" ry="7.7" fill="#b85a2c" opacity="0.55"/><ellipse cx="49.4" cy="86.2" rx="7.3" ry="7.0" fill="#b85a2c" opacity="0.55"/><ellipse cx="58.2" cy="72.3" rx="9.0" ry="7.5" fill="#b85a2c" opacity="0.55"/><ellipse cx="92.9" cy="61.7" rx="5.9" ry="5.4" fill="#b85a2c" opacity="0.55"/><ellipse cx="65.4" cy="89.2" rx="6.7" ry="6.2" fill="#b85a2c" opacity="0.55"/><ellipse cx="57.9" cy="93.7" rx="4.8" ry="5.1" fill="#e89a63" opacity="0.5"/><ellipse cx="77.5" cy="64.3" rx="4.9" ry="4.2" fill="#e89a63" opacity="0.5"/><ellipse cx="49.3" cy="57.3" rx="4.4" ry="3.8" fill="#e89a63" opacity="0.5"/><ellipse cx="70.7" cy="94.8" rx="5.8" ry="6.2" fill="#e89a63" opacity="0.5"/><ellipse cx="77.4" cy="65.7" rx="4.8" ry="4.6" fill="#e89a63" opacity="0.5"/><ellipse cx="45.3" cy="28.2" rx="3.9" ry="3.5" fill="#e89a63" opacity="0.5"/><ellipse cx="60" cy="18" rx="13" ry="4" fill="#f3e6da" opacity="0.8"/>
+    <circle cx="60" cy="60" r="48" fill="url(#limb-4)"/>
+  </g>
+  <circle cx="60" cy="60" r="48" fill="none" stroke="#f0a878" stroke-opacity="0.35" stroke-width="1.5"/>
+</svg>

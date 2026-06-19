@@ -19,6 +19,7 @@ build: the original phase prompts, the de-risking findings, and this log.
 | 4 — WS server | Express + ws, snapshot-then-deltas, write-only API key | ✅ done & verified |
 | 5 — Frontend | React/Vite side-view space scene (radial: sun + planets) | ✅ done & verified |
 | 6 — Human-in-the-loop | `waiting-human` as a real blocking approval (engine pause + approve/reject) | ✅ done & verified |
+| 7 — Asset polish | swap placeholder circles for generated planet sprites via the seam | ✅ done & verified |
 
 Full vertical slice works: command in → orchestrator plans → workers run on
 chosen models → state persists in SQLite → browser shows it live.
@@ -67,5 +68,9 @@ chosen models → state persists in SQLite → browser shows it live.
 - [x] Human-in-the-loop gates — DONE in Phase 6 (engine pause + approve/reject).
 - [ ] Replay — task_events already logs everything; add a scrubber that
       re-plays a run.
-- [ ] Asset polish — swap SVG placeholder planets for sprite PNGs via the seam
-      in `web/src/Planet.tsx` (`PlanetSprite`).
+- [x] Asset polish — DONE in Phase 7. 8 generated planet sprites
+      (`web/scripts/gen-planets.mjs` → `web/public/assets/planets/planet-*.svg`),
+      loaded through the `PlanetSprite` seam by a stable per-worker hash. State
+      animation (rings/shake/blink/glow) is untouched — composes over the sprite.
+      To use Deep-Fold PNGs instead, point the seam's `href` at the PNGs; nothing
+      else changes. Gallery at `/gallery.html`.

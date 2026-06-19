@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <radialGradient id="limb-1" cx="38%" cy="34%" r="75%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+    </radialGradient>
+    <clipPath id="disc-1"><circle cx="60" cy="60" r="48"/></clipPath></defs>
+  
+  <g clip-path="url(#disc-1)">
+    <circle cx="60" cy="60" r="48" fill="#caa15e"/>
+    <rect x="12" y="12.0" width="96" height="14.7" fill="#e8c98a"/><rect x="12" y="25.7" width="96" height="14.7" fill="#c79550"/><rect x="12" y="39.4" width="96" height="14.7" fill="#e3bd7c"/><rect x="12" y="53.1" width="96" height="14.7" fill="#b07e3e"/><rect x="12" y="66.9" width="96" height="14.7" fill="#d8ad6a"/><rect x="12" y="80.6" width="96" height="14.7" fill="#9c6e34"/><rect x="12" y="94.3" width="96" height="14.7" fill="#e0b873"/><ellipse cx="72" cy="68" rx="9" ry="6" fill="#7a4a22" opacity="0.8"/><ellipse cx="72" cy="68" rx="4.5" ry="3" fill="#b85c2a" opacity="0.9"/>
+    <circle cx="60" cy="60" r="48" fill="url(#limb-1)"/>
+  </g>
+  <circle cx="60" cy="60" r="48" fill="none" stroke="#ffd9a0" stroke-opacity="0.35" stroke-width="1.5"/>
+</svg>

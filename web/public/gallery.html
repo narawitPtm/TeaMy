@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Planet sprite gallery</title>
+    <style>
+      body { margin: 0; background: radial-gradient(900px 500px at 70% -10%, #16203a, #0a0e16); color: #c7d0e0; font-family: ui-sans-serif, system-ui, sans-serif; }
+      h1 { font-size: 18px; padding: 18px 22px 0; font-weight: 650; }
+      p { padding: 0 22px; color: #6b7689; font-size: 13px; }
+      .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 18px 22px 40px; }
+      .cell { text-align: center; }
+      .cell img { width: 150px; height: 150px; filter: drop-shadow(0 0 22px rgba(57,192,255,0.10)); }
+      .cell span { display: block; font-family: ui-monospace, monospace; font-size: 11px; color: #8b96ab; margin-top: 2px; }
+      .name { color: #c7d0e0; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Planet sprite gallery</h1>
+    <p>8 generated sprites loaded through the swap seam — worker id hashes to one of these.</p>
+    <div class="grid" id="grid"></div>
+    <script>
+      const names = ["terran", "gas giant", "ice", "lava", "desert/mars", "ocean", "exotic", "ringed"];
+      const grid = document.getElementById("grid");
+      for (let i = 0; i < 8; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        const img = document.createElement("img");
+        img.src = `/assets/planets/planet-${i}.svg`;
+        const nm = document.createElement("span");
+        nm.className = "name";
+        nm.textContent = names[i];
+        const fn = document.createElement("span");
+        fn.textContent = `planet-${i}.svg`;
+        cell.append(img, nm, fn);
+        grid.appendChild(cell);
+      }
+    </script>
+  </body>
+</html>

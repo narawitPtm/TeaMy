@@ -140,6 +140,7 @@ export function Scene({
                   status={statusOf(w.id)}
                   name={w.name}
                   model={w.model}
+                  spriteSeed={w.id}
                   selected={selectedWorker === w.id}
                   onClick={() => onSelectWorker(selectedWorker === w.id ? null : w.id)}
                 />
