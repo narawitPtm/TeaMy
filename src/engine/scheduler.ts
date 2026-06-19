@@ -210,7 +210,7 @@ export class Scheduler {
   /** Poll the board for a human approval decision (set via the server). */
   private async awaitApproval(
     taskId: string,
-    timeoutMs = 600_000,
+    timeoutMs = 3_600_000, // 1h — a human gate should wait, not fail if you step away
   ): Promise<"approved" | "rejected" | "timeout"> {
     const start = Date.now();
     for (;;) {

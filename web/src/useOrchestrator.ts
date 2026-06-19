@@ -131,35 +131,58 @@ export function useOrchestrator() {
 
   useEffect(() => {
     refresh();
-    const proto = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${proto}://${location.host}/events`);
-    wsRef.current = ws;
-    ws.onopen = () => setState((s) => ({ ...s, connected: true }));
-    ws.onclose = () => setState((s) => ({ ...s, connected: false }));
-    ws.onmessage = (m) => {
-      const msg = JSON.parse(m.data) as WsMessage & { data: { type?: string } };
-      if (msg.kind === "snapshot") applySnapshot(msg.data as Snapshot);
-      else if (msg.kind === "event") {
-        const ev = msg.data as EngineEvent;
-        applyEvent(ev);
-        // First time we see a worker, pull the snapshot (debounced) to get its
-        // real name/model instead of the stub. Reconcile fully on run end too.
-        if (ev.workerId && !seenWorkers.current.has(ev.workerId)) {
-          seenWorkers.current.add(ev.workerId);
-          if (refreshTimer.current) clearTimeout(refreshTimer.current);
-          refreshTimer.current = setTimeout(() => void refresh(), 400);
+    let closedByUs = false;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${location.host}/events`);
+      wsRef.current = ws;
+      ws.onopen = () => {
+        setState((s) => ({ ...s, connected: true }));
+        void refresh(); // resync after any gap
+      };
+      ws.onclose = () => {
+        setState((s) => ({ ...s, connected: false }));
+        // Auto-reconnect so a dropped feed doesn't leave the UI stale forever
+        // (e.g. approvals would appear to do nothing).
+        if (!closedByUs && retry == null) {
+          retry = setTimeout(() => {
+            retry = null;
+            connect();
+          }, 1200);
         }
-        if (
-          ev.type === "run-complete" ||
-          ev.type === "run-error" ||
-          ev.type === "floor-created" ||
-          ev.type === "floor-deleted" ||
-          ev.type === "floor-updated"
-        )
-          void refresh();
-      }
+      };
+      ws.onerror = () => ws.close();
+      ws.onmessage = (m) => {
+        const msg = JSON.parse(m.data) as WsMessage & { data: { type?: string } };
+        if (msg.kind === "snapshot") applySnapshot(msg.data as Snapshot);
+        else if (msg.kind === "event") {
+          const ev = msg.data as EngineEvent;
+          applyEvent(ev);
+          if (ev.workerId && !seenWorkers.current.has(ev.workerId)) {
+            seenWorkers.current.add(ev.workerId);
+            if (refreshTimer.current) clearTimeout(refreshTimer.current);
+            refreshTimer.current = setTimeout(() => void refresh(), 400);
+          }
+          if (
+            ev.type === "run-complete" ||
+            ev.type === "run-error" ||
+            ev.type === "floor-created" ||
+            ev.type === "floor-deleted" ||
+            ev.type === "floor-updated"
+          )
+            void refresh();
+        }
+      };
     };
-    return () => ws.close();
+
+    connect();
+    return () => {
+      closedByUs = true;
+      if (retry) clearTimeout(retry);
+      wsRef.current?.close();
+    };
   }, [applySnapshot, applyEvent, refresh]);
 
   const sendCommand = useCallback(async (command: string, floorId?: string) => {
@@ -215,13 +238,21 @@ export function useOrchestrator() {
     return fetch(`/tasks/${encodeURIComponent(taskId)}/retry`, { method: "POST" }).then((r) => r.json());
   }, []);
 
-  const approve = useCallback(async (taskId: string, approved: boolean) => {
-    return fetch("/approve", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ taskId, approved }),
-    }).then((r) => r.json());
-  }, []);
+  const approve = useCallback(
+    async (taskId: string, approved: boolean) => {
+      const r = await fetch("/approve", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ taskId, approved }),
+      }).then((x) => x.json());
+      // Reflect the decision immediately even if the live WS feed is flaky, and
+      // reconcile again shortly after the engine resumes the task.
+      await refresh();
+      setTimeout(() => void refresh(), 1500);
+      return r;
+    },
+    [refresh],
+  );
 
   return { state, sendCommand, saveApiKey, approve, createFloor, updateFloor, removeFloor, retryTask };
 }
