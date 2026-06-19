@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Orchestrator — Phase 4 test client</title>
+  </head>
+  <body style="font-family: monospace">
+    <h3>Multi-Agent Orchestrator — minimal test client (Phase 4)</h3>
+
+    <div>
+      <input id="cmd" size="80" placeholder="Enter a command…"
+        value="Write a haiku about the ocean, then count the syllables in it." />
+      <button id="send">POST /command</button>
+      <span id="status"></span>
+    </div>
+
+    <div style="margin-top: 8px">
+      API key:
+      <input id="apiKey" size="30" placeholder="(write-only)" />
+      <button id="saveKey">Save</button>
+      <span id="keyState"></span>
+    </div>
+
+    <h4>Events (snapshot then live)</h4>
+    <pre id="log" style="white-space: pre-wrap; max-height: 70vh; overflow: auto"></pre>
+
+    <script>
+      const logEl = document.getElementById("log");
+      function line(s) {
+        logEl.textContent += s + "\n";
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      async function refreshKeyState() {
+        const r = await fetch("/settings").then((x) => x.json());
+        document.getElementById("keyState").textContent = r.apiKeySet
+          ? "key is set"
+          : "key not set";
+      }
+      refreshKeyState();
+
+      document.getElementById("send").onclick = async () => {
+        const command = document.getElementById("cmd").value;
+        const r = await fetch("/command", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ command }),
+        });
+        const j = await r.json();
+        document.getElementById("status").textContent =
+          r.ok ? "accepted" : "error: " + (j.error || r.status);
+      };
+
+      document.getElementById("saveKey").onclick = async () => {
+        const apiKey = document.getElementById("apiKey").value;
+        await fetch("/settings/api-key", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ apiKey }),
+        });
+        document.getElementById("apiKey").value = "";
+        refreshKeyState();
+      };
+
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${location.host}/events`);
+      ws.onopen = () => line("[ws connected]");
+      ws.onclose = () => line("[ws closed]");
+      ws.onmessage = (m) => {
+        const msg = JSON.parse(m.data);
+        if (msg.kind === "snapshot") {
+          line("[snapshot] floors=" + msg.data.floors.length +
+            " workers=" + msg.data.workers.length +
+            " tasks=" + msg.data.tasks.length);
+          for (const t of msg.data.tasks)
+            line("   task " + t.id + " [" + t.status + "] " + (t.specialize || ""));
+        } else if (msg.kind === "event") {
+          const e = msg.data;
+          line(`${e.ts} ${e.type.padEnd(14)} task=${e.taskId} ` +
+            `worker=${e.workerId || "-"} status=${e.status || "-"}`);
+        }
+      };
+    </script>
+  </body>
+</html>
