@@ -3,13 +3,14 @@ import { useOrchestrator } from "./useOrchestrator";
 import { Universe } from "./Universe";
 import { Replay } from "./Replay";
 import { NewTeam } from "./NewTeam";
+import { TeamPicker } from "./TeamPicker";
 import { ALL_STATES, STATE_VISUALS } from "./state-visuals";
 import type { NewTeamConfig, Task } from "./types";
 
 const ACTIVE: Task["status"][] = ["queued", "running", "blocked", "waiting-human", "retrying"];
 
 export default function App() {
-  const { state, sendCommand, saveApiKey, approve, createFloor, removeFloor, retryTask } = useOrchestrator();
+  const { state, sendCommand, saveApiKey, approve, createFloor, updateFloor, removeFloor, retryTask } = useOrchestrator();
   const [command, setCommand] = useState(
     "Research three deep-sea creatures, write a fun fact about each, then combine them into one blurb and give it a catchy title.",
   );
@@ -21,6 +22,7 @@ export default function App() {
   const [replay, setReplay] = useState(false);
   const [focusFloorId, setFocusFloorId] = useState<string | null>(null);
   const [showNewTeam, setShowNewTeam] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const floorId = targetFloor || state.floors[0]?.id || "floor_main";
 
@@ -73,6 +75,11 @@ export default function App() {
   const focusTeam = (id: string) => {
     setTargetFloor(id);
     setFocusFloorId(id);
+  };
+
+  const saveTeam = async (cfg: NewTeamConfig) => {
+    if (selFloor) await updateFloor(selFloor.id, cfg);
+    setEditing(false);
   };
 
   const removeTeam = async () => {
@@ -192,14 +199,13 @@ export default function App() {
       {/* command console (bottom-center) */}
       {!replay && (
         <div className="hud console panel">
-          <select value={floorId} onChange={(e) => setTargetFloor(e.target.value)} className="team-sel">
-            {state.floors.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-                {runningFloors.has(f.id) ? " ●" : ""}
-              </option>
-            ))}
-          </select>
+          <TeamPicker
+            floors={state.floors}
+            value={floorId}
+            runningFloors={runningFloors}
+            onSelect={focusTeam}
+          />
+          <button className="ghost icon" title="edit this team" onClick={() => setEditing(true)}>✎</button>
           <input
             className="cmd"
             value={command}
@@ -273,6 +279,15 @@ export default function App() {
           defaultName={`Team ${state.floors.length + 1}`}
           onCreate={addTeam}
           onClose={() => setShowNewTeam(false)}
+        />
+      )}
+
+      {editing && selFloor && (
+        <NewTeam
+          defaultName={selFloor.name}
+          edit={selFloor}
+          onCreate={saveTeam}
+          onClose={() => setEditing(false)}
         />
       )}
     </div>

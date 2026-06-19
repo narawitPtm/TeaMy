@@ -185,6 +185,29 @@ app.post("/floors", (req, res) => {
 // Per-floor busy guard — different floors run concurrently, same floor serializes.
 const busyFloors = new Set<string>();
 
+// Edit a team's config (name / instruction / model / cwd / permission).
+app.patch("/floors/:id", (req, res) => {
+  const floor = dao.getFloor(req.params.id);
+  if (!floor) {
+    res.status(404).json({ error: `no such floor: ${req.params.id}` });
+    return;
+  }
+  const b = req.body ?? {};
+  const pm = (b.permissionMode ?? "").toString();
+  dao.updateFloor(floor.id, {
+    name: b.name !== undefined ? String(b.name) : undefined,
+    instruction: b.instruction !== undefined ? String(b.instruction) : undefined,
+    model: b.model !== undefined ? String(b.model) : undefined,
+    cwd: b.cwd !== undefined ? String(b.cwd) : undefined,
+    permissionMode: PERMISSION_MODES.has(pm)
+      ? (pm as "default" | "acceptEdits" | "bypassPermissions")
+      : undefined,
+  });
+  const updated = dao.getFloor(floor.id)!;
+  emit({ taskId: "-", floorId: floor.id, workerId: null, type: "floor-updated", status: null, payload: { floor: updated } });
+  res.json({ floor: updated });
+});
+
 // Remove a team (floor) and everything under it.
 app.delete("/floors/:id", (req, res) => {
   const id = req.params.id;

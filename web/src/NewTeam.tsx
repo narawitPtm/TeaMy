@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { NewTeamConfig, PermissionMode, RosterWorker } from "./types";
+import type { Floor, NewTeamConfig, PermissionMode, RosterWorker } from "./types";
 
 /**
  * "New Team" configuration dialog. Lets you set everything per team before it's
@@ -22,18 +22,21 @@ const PERMS: { v: PermissionMode; label: string }[] = [
 
 export function NewTeam({
   defaultName,
+  edit,
   onCreate,
   onClose,
 }: {
   defaultName: string;
+  /** when present, the dialog edits this team's config instead of creating */
+  edit?: Floor;
   onCreate: (cfg: NewTeamConfig) => void;
   onClose: () => void;
 }) {
-  const [name, setName] = useState(defaultName);
-  const [instruction, setInstruction] = useState("");
-  const [model, setModel] = useState("");
-  const [cwd, setCwd] = useState("");
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>("default");
+  const [name, setName] = useState(edit?.name ?? defaultName);
+  const [instruction, setInstruction] = useState(edit?.instruction ?? "");
+  const [model, setModel] = useState(edit?.model ?? "");
+  const [cwd, setCwd] = useState(edit?.cwd ?? "");
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>(edit?.permission_mode ?? "default");
   const [workers, setWorkers] = useState<RosterWorker[]>([]);
 
   const addWorker = () =>
@@ -46,7 +49,7 @@ export function NewTeam({
     <div className="modal-scrim" onPointerDown={onClose}>
       <div className="modal panel" onPointerDown={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>New Team</h2>
+          <h2>{edit ? "Edit Team" : "New Team"}</h2>
           <button className="x" onClick={onClose}>×</button>
         </div>
 
@@ -83,13 +86,20 @@ export function NewTeam({
         <label>Workspace directory <span className="opt">(optional — where workers operate)</span></label>
         <input value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="e.g. C:\\Users\\me\\project (blank = sandbox)" />
 
-        <div className="roster-head">
-          <label style={{ margin: 0 }}>
-            Workers <span className="opt">{workers.length ? "(manual — planner assigns to these)" : "(empty = auto, planner invents roles)"}</span>
-          </label>
-          <button className="ghost mini" onClick={addWorker}>＋ worker</button>
-        </div>
-        {workers.map((w, i) => (
+        {edit ? (
+          <p className="opt" style={{ marginTop: 16 }}>
+            Mode: <b>{edit.mode === "manual" ? "manual roster" : "auto"}</b>
+            {edit.mode === "manual" ? " — worker roster is fixed after creation." : ""}
+          </p>
+        ) : (
+          <div className="roster-head">
+            <label style={{ margin: 0 }}>
+              Workers <span className="opt">{workers.length ? "(manual — planner assigns to these)" : "(empty = auto, planner invents roles)"}</span>
+            </label>
+            <button className="ghost mini" onClick={addWorker}>＋ worker</button>
+          </div>
+        )}
+        {!edit && workers.map((w, i) => (
           <div className="roster-row" key={i}>
             <input className="rw-name" value={w.name} onChange={(e) => setWorker(i, { name: e.target.value })} placeholder="name (e.g. Frontend)" />
             <input className="rw-role" value={w.role} onChange={(e) => setWorker(i, { role: e.target.value })} placeholder="role (e.g. frontend)" />
@@ -115,11 +125,11 @@ export function NewTeam({
                 model,
                 cwd,
                 permissionMode,
-                workers: workers.filter((w) => w.role.trim()),
+                ...(edit ? {} : { workers: workers.filter((w) => w.role.trim()) }),
               })
             }
           >
-            Create team
+            {edit ? "Save changes" : "Create team"}
           </button>
         </div>
       </div>

@@ -153,7 +153,8 @@ export function useOrchestrator() {
           ev.type === "run-complete" ||
           ev.type === "run-error" ||
           ev.type === "floor-created" ||
-          ev.type === "floor-deleted"
+          ev.type === "floor-deleted" ||
+          ev.type === "floor-updated"
         )
           void refresh();
       }
@@ -191,6 +192,19 @@ export function useOrchestrator() {
     return r.floor;
   }, [refresh]);
 
+  const updateFloor = useCallback(
+    async (id: string, patch: Partial<import("./types").NewTeamConfig>) => {
+      const r = await fetch(`/floors/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch),
+      }).then((x) => x.json());
+      await refresh();
+      return r.floor;
+    },
+    [refresh],
+  );
+
   const removeFloor = useCallback(async (id: string) => {
     const r = await fetch(`/floors/${encodeURIComponent(id)}`, { method: "DELETE" }).then((x) => x.json());
     await refresh();
@@ -209,5 +223,5 @@ export function useOrchestrator() {
     }).then((r) => r.json());
   }, []);
 
-  return { state, sendCommand, saveApiKey, approve, createFloor, removeFloor, retryTask };
+  return { state, sendCommand, saveApiKey, approve, createFloor, updateFloor, removeFloor, retryTask };
 }

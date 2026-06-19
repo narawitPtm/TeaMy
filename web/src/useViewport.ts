@@ -25,9 +25,42 @@ export function useViewport(initial?: Partial<Viewport>) {
   const ref = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{ sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
   const [panning, setPanning] = useState(false);
+  const vpRef = useRef(vp);
+  vpRef.current = vp;
+  const rafRef = useRef<number | null>(null);
+
+  const cancelAnim = useCallback(() => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  /** Smoothly ease the viewport to a target (easeOutCubic). */
+  const animateTo = useCallback(
+    (target: Viewport, dur = 700) => {
+      cancelAnim();
+      const start = { ...vpRef.current };
+      const t0 = performance.now();
+      const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+      const step = (now: number) => {
+        const k = Math.min(1, (now - t0) / dur);
+        const e = ease(k);
+        setVp({
+          x: start.x + (target.x - start.x) * e,
+          y: start.y + (target.y - start.y) * e,
+          scale: start.scale + (target.scale - start.scale) * e,
+        });
+        rafRef.current = k < 1 ? requestAnimationFrame(step) : null;
+      };
+      rafRef.current = requestAnimationFrame(step);
+    },
+    [cancelAnim],
+  );
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    cancelAnim(); // interrupt any fly-to when the user grabs
     drag.current = { sx: e.clientX, sy: e.clientY, ox: 0, oy: 0, moved: false };
     setVp((v) => {
       drag.current!.ox = v.x;
@@ -67,6 +100,7 @@ export function useViewport(initial?: Partial<Viewport>) {
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      cancelAnim();
       const rect = el.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
@@ -83,25 +117,30 @@ export function useViewport(initial?: Partial<Viewport>) {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  const zoomBy = useCallback((mult: number) => {
-    const el = ref.current;
-    const cx = el ? el.clientWidth / 2 : window.innerWidth / 2;
-    const cy = el ? el.clientHeight / 2 : window.innerHeight / 2;
-    setVp((v) => {
+  const zoomBy = useCallback(
+    (mult: number) => {
+      const el = ref.current;
+      const cx = el ? el.clientWidth / 2 : window.innerWidth / 2;
+      const cy = el ? el.clientHeight / 2 : window.innerHeight / 2;
+      const v = vpRef.current;
       const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, v.scale * mult));
       const wx = (cx - v.x) / v.scale;
       const wy = (cy - v.y) / v.scale;
-      return { scale, x: cx - wx * scale, y: cy - wy * scale };
-    });
-  }, []);
+      animateTo({ scale, x: cx - wx * scale, y: cy - wy * scale }, 360);
+    },
+    [animateTo],
+  );
 
-  /** Center the view on a world point at a given scale. */
-  const focusOn = useCallback((wx: number, wy: number, scale = 0.85) => {
-    const el = ref.current;
-    const cx = el ? el.clientWidth / 2 : window.innerWidth / 2;
-    const cy = el ? el.clientHeight / 2 : window.innerHeight / 2;
-    setVp({ scale, x: cx - wx * scale, y: cy - wy * scale });
-  }, []);
+  /** Smoothly fly the view to center a world point at a given scale. */
+  const focusOn = useCallback(
+    (wx: number, wy: number, scale = 0.85) => {
+      const el = ref.current;
+      const cx = el ? el.clientWidth / 2 : window.innerWidth / 2;
+      const cy = el ? el.clientHeight / 2 : window.innerHeight / 2;
+      animateTo({ scale, x: cx - wx * scale, y: cy - wy * scale }, 720);
+    },
+    [animateTo],
+  );
 
   return {
     vp,

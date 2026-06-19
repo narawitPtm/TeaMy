@@ -120,6 +120,33 @@ export class Dao {
     return this.db.prepare(`SELECT * FROM floors ORDER BY id`).all() as Floor[];
   }
 
+  /** Update team-level config (only the provided fields). */
+  updateFloor(
+    id: string,
+    patch: {
+      name?: string;
+      instruction?: string;
+      model?: string;
+      cwd?: string;
+      permissionMode?: PermissionMode;
+    },
+  ): void {
+    const sets: string[] = [];
+    const vals: unknown[] = [];
+    const put = (col: string, v: unknown) => {
+      sets.push(`${col} = ?`);
+      vals.push(v);
+    };
+    if (patch.name !== undefined) put("name", patch.name.trim() || "Team");
+    if (patch.instruction !== undefined) put("instruction", patch.instruction.trim() || null);
+    if (patch.model !== undefined) put("model", patch.model.trim() || null);
+    if (patch.cwd !== undefined) put("cwd", patch.cwd.trim() || null);
+    if (patch.permissionMode !== undefined) put("permission_mode", patch.permissionMode);
+    if (!sets.length) return;
+    vals.push(id);
+    this.db.prepare(`UPDATE floors SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  }
+
   /** Delete a floor; ON DELETE CASCADE removes its workers/tasks/events too. */
   deleteFloor(id: string): void {
     this.db.prepare(`DELETE FROM floors WHERE id = ?`).run(id);
