@@ -27,7 +27,7 @@ const TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
   queued: ["running", "blocked"], //          slot opens, or a dep isn't done
   blocked: ["queued"], //                     dependency completed
   running: ["waiting-human", "done", "failed"],
-  "waiting-human": ["running"], //            human approved
+  "waiting-human": ["running", "failed"], //  human approved (->running) or rejected (->failed)
   failed: ["retrying"], //                    retry policy kicks in
   retrying: ["queued"], //                    re-queued for another attempt
   done: [], //                                terminal

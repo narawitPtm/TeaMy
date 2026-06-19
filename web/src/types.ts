@@ -38,6 +38,9 @@ export interface Task {
   depends_on: string[];
   session_id: string | null;
   retries: number;
+  requires_approval: number; // 0 | 1
+  approval: "approved" | "rejected" | null;
+  worker_id: string | null;
 }
 
 export interface Snapshot {

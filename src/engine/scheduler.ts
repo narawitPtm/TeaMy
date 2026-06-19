@@ -137,9 +137,40 @@ export class Scheduler {
       return;
     }
 
+    // Persist the assignment so the snapshot conveys worker<->task binding even
+    // to clients that connect mid-run (and so resume/inspection know who ran it).
+    this.dao.setTaskWorker(task.id, worker.id);
+
+    // Bind this worker to its planet up front (carries workerId) so the UI can
+    // reflect state on the planet — including 'waiting-human' before the SDK
+    // ever starts (the gate happens before any agent event is emitted).
+    this.opts.emit({
+      taskId: task.id,
+      floorId: task.floor_id,
+      workerId: worker.id,
+      type: "assign",
+      status: "running",
+      payload: { worker: worker.id, model: task.model },
+    });
+
     const injected = this.buildInput(task);
     this.dao.setTaskInput(task.id, injected);
-    const runningTask = this.transition(task, "running"); // queued -> running
+    let runningTask = this.transition(task, "running"); // queued -> running
+
+    // Human-in-the-loop gate: if this task needs approval and none is recorded
+    // yet, pause in 'waiting-human' until a human decides (POST /approve).
+    if (runningTask.requires_approval && !runningTask.approval) {
+      this.transition(runningTask, "waiting-human"); // running -> waiting-human
+      const decision = await this.awaitApproval(task.id);
+      if (decision !== "approved") {
+        // rejected (or timed out): waiting-human -> failed, no retry.
+        this.dao.setTaskOutput(task.id, `(blocked by human: ${decision})`);
+        this.transition(this.dao.getTask(task.id)!, "failed", { rejected: true, decision });
+        this.running.delete(task.id);
+        return;
+      }
+      runningTask = this.transition(this.dao.getTask(task.id)!, "running"); // approved
+    }
 
     const outcome = await runTask(
       this.dao,
@@ -171,13 +202,27 @@ export class Scheduler {
     this.running.delete(task.id);
   }
 
+  /** Poll the board for a human approval decision (set via the server). */
+  private async awaitApproval(
+    taskId: string,
+    timeoutMs = 600_000,
+  ): Promise<"approved" | "rejected" | "timeout"> {
+    const start = Date.now();
+    for (;;) {
+      const t = this.dao.getTask(taskId);
+      if (t?.approval) return t.approval;
+      if (Date.now() - start > timeoutMs) return "timeout";
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+
   private isDone(): boolean {
     const tasks = this.dao.listTasks(this.opts.floorId);
     if (tasks.length === 0) return true;
     // Done when nothing can still make progress: no idle/queued/running/blocked/
     // waiting-human/retrying left. (failed with deps stuck also terminates.)
     const active = tasks.filter((t) =>
-      ["idle", "queued", "running", "retrying"].includes(t.status),
+      ["idle", "queued", "running", "retrying", "waiting-human"].includes(t.status),
     );
     if (active.length > 0) return false;
     // Blocked tasks whose deps failed will never run — treat as terminal.

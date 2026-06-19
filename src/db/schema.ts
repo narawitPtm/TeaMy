@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   depends_on    TEXT NOT NULL DEFAULT '[]', -- JSON array of task ids
   session_id    TEXT,                        -- Agent SDK session id (for resume)
   retries       INTEGER NOT NULL DEFAULT 0,
+  requires_approval INTEGER NOT NULL DEFAULT 0, -- 1 = gate in 'waiting-human' before running
+  approval      TEXT,                        -- null (pending) | 'approved' | 'rejected'
+  worker_id     TEXT,                        -- the worker assigned to run this task (set at dispatch)
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
@@ -77,5 +80,24 @@ CREATE TABLE IF NOT EXISTS settings (
 export function openDb(path = "orchestrator.sqlite"): DB {
   const db = new Database(path);
   db.exec(SCHEMA_SQL);
+  migrate(db);
   return db;
+}
+
+/** Idempotent migrations for DBs created before a column existed. */
+function migrate(db: DB): void {
+  const cols = new Set(
+    (db.prepare(`PRAGMA table_info(tasks)`).all() as Array<{ name: string }>).map(
+      (c) => c.name,
+    ),
+  );
+  if (!cols.has("requires_approval")) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN requires_approval INTEGER NOT NULL DEFAULT 0`);
+  }
+  if (!cols.has("approval")) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN approval TEXT`);
+  }
+  if (!cols.has("worker_id")) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN worker_id TEXT`);
+  }
 }

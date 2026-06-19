@@ -4,7 +4,7 @@ import { Scene } from "./Scene";
 import { ALL_STATES, STATE_VISUALS } from "./state-visuals";
 
 export default function App() {
-  const { state, sendCommand, saveApiKey } = useOrchestrator();
+  const { state, sendCommand, saveApiKey, approve } = useOrchestrator();
   const [command, setCommand] = useState(
     "Research three notable deep-sea creatures, write a fun fact about each, then combine them into one Ocean Trivia blurb and give it a catchy title.",
   );
@@ -17,6 +17,9 @@ export default function App() {
   const selEvents = selTask
     ? state.events.filter((e) => e.taskId === selTask.id)
     : [];
+  const pendingApprovals = Object.values(state.tasks).filter(
+    (t) => t.status === "waiting-human",
+  );
 
   return (
     <div className="app">
@@ -76,6 +79,25 @@ export default function App() {
         ))}
       </div>
 
+      {pendingApprovals.length > 0 && (
+        <div className="approvals">
+          {pendingApprovals.map((t) => (
+            <div key={t.id} className="approval-row">
+              <span className="needs">needs you</span>
+              <span className="atask">
+                {t.specialize ?? "task"} · {t.id}
+              </span>
+              <button className="approve" onClick={() => approve(t.id, true)}>
+                Approve
+              </button>
+              <button className="reject" onClick={() => approve(t.id, false)}>
+                Reject
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="stage">
         <Scene
           floors={state.floors}
@@ -99,6 +121,17 @@ export default function App() {
             <>
               <div className="kv">task: {selTask.id} · <em>{selTask.status}</em></div>
               <div className="kv">specialize: {selTask.specialize ?? "—"}</div>
+              {selTask.status === "waiting-human" && (
+                <div className="approve-inline">
+                  <span className="needs">⏳ awaiting your approval</span>
+                  <button className="approve" onClick={() => approve(selTask.id, true)}>
+                    Approve
+                  </button>
+                  <button className="reject" onClick={() => approve(selTask.id, false)}>
+                    Reject
+                  </button>
+                </div>
+              )}
               <div className="output">
                 <div className="muted">latest output</div>
                 <pre>{selTask.output ?? "(none yet)"}</pre>

@@ -45,6 +45,27 @@ button:disabled { opacity: 0.45; cursor: default; }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
 .legend .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
 
+/* ---- human-in-the-loop approvals ----------------------------------------- */
+.approvals {
+  margin-top: 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.approval-row, .approve-inline {
+  display: flex; align-items: center; gap: 10px;
+  background: #241634; border: 1px solid #553a7a; border-radius: 9px;
+  padding: 8px 12px; font-size: 13px;
+}
+.approve-inline { margin-top: 10px; }
+.needs {
+  color: #d8b3ff; font-weight: 600;
+  animation: blink 0.9s steps(1, end) infinite;
+}
+.atask { color: var(--muted); }
+.approval-row .approve, .approve-inline .approve {
+  margin-left: auto; background: #2f9e54;
+}
+.reject { background: #b23b3b; }
+.approve-inline .approve { margin-left: auto; }
+
 .stage {
   margin-top: 10px; border: 1px solid var(--line); border-radius: 12px;
   background: linear-gradient(180deg, #070b13, #0a0e18);

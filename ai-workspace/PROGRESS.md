@@ -18,9 +18,26 @@ build: the original phase prompts, the de-risking findings, and this log.
 | 3 — Engine | command → plan(DAG) → supervise → assemble (headless) | ✅ done & verified |
 | 4 — WS server | Express + ws, snapshot-then-deltas, write-only API key | ✅ done & verified |
 | 5 — Frontend | React/Vite side-view space scene (radial: sun + planets) | ✅ done & verified |
+| 6 — Human-in-the-loop | `waiting-human` as a real blocking approval (engine pause + approve/reject) | ✅ done & verified |
 
 Full vertical slice works: command in → orchestrator plans → workers run on
 chosen models → state persists in SQLite → browser shows it live.
+
+## Phase 6 notes (human-in-the-loop gates)
+
+- The planner flags the final/irreversible task `requires_approval`. At dispatch
+  the scheduler transitions it `running -> waiting-human` and BLOCKS (polling the
+  board) until a human decides.
+- `POST /approve { taskId, approved }` records the decision; approve →
+  `waiting-human -> running` (runs the SDK), reject → `waiting-human -> failed`
+  (no API call wasted, output `(blocked by human: rejected)`).
+- UI: a top approval banner + inspector buttons; the gated planet itself shows
+  the `waiting-human` visual (purple + blinking "!" + "needs you").
+- Data-model improvement made for this: tasks now persist `worker_id` (set at
+  dispatch), so the snapshot conveys worker↔task binding to clients that connect
+  mid-run. Added `requires_approval` + `approval` columns too (idempotent migration).
+- Bug fixed: the Vite dev proxy was missing `/approve`, so the browser's POST
+  never reached the backend — added it.
 
 ## Design decisions of note
 
@@ -47,8 +64,7 @@ chosen models → state persists in SQLite → browser shows it live.
 ## Deferred (the "next phase" backlog)
 
 - [ ] Per-worker API-key billing — exercise the `apiKey` path once a key exists.
-- [ ] Human-in-the-loop gates — make the `waiting-human` state a real blocking
-      approval (engine pause + UI approve button + resume).
+- [x] Human-in-the-loop gates — DONE in Phase 6 (engine pause + approve/reject).
 - [ ] Replay — task_events already logs everything; add a scrubber that
       re-plays a run.
 - [ ] Asset polish — swap SVG placeholder planets for sprite PNGs via the seam

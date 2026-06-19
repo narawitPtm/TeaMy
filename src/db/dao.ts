@@ -41,6 +41,9 @@ export interface TaskRow {
   depends_on: string; // JSON array in the DB
   session_id: string | null;
   retries: number;
+  requires_approval: number; // 0 | 1
+  approval: "approved" | "rejected" | null;
+  worker_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -139,14 +142,15 @@ export class Dao {
     status?: TaskStatus;
     input?: string;
     dependsOn?: string[];
+    requiresApproval?: boolean;
   }): Task {
     const id = input.id ?? `task_${randomUUID().slice(0, 8)}`;
     this.db
       .prepare(
         `INSERT INTO tasks
            (id, floor_id, parent_id, specialize, system_prompt, model,
-            status, input, depends_on)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            status, input, depends_on, requires_approval)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -158,6 +162,7 @@ export class Dao {
         input.status ?? "idle",
         input.input ?? null,
         JSON.stringify(input.dependsOn ?? []),
+        input.requiresApproval ? 1 : 0,
       );
     return this.getTask(id)!;
   }
@@ -237,6 +242,26 @@ export class Dao {
          WHERE id = ?`,
       )
       .run(JSON.stringify(dependsOn), id);
+  }
+
+  /** Record a human approval decision for a gated task. */
+  setApproval(id: string, decision: "approved" | "rejected"): void {
+    this.db
+      .prepare(
+        `UPDATE tasks SET approval = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+         WHERE id = ?`,
+      )
+      .run(decision, id);
+  }
+
+  /** Record which worker is assigned to run a task (set at dispatch). */
+  setTaskWorker(id: string, workerId: string): void {
+    this.db
+      .prepare(
+        `UPDATE tasks SET worker_id = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+         WHERE id = ?`,
+      )
+      .run(workerId, id);
   }
 
   setTaskSession(id: string, sessionId: string): void {

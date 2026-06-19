@@ -82,9 +82,15 @@ web/                  React + Vite space UI (Phase 5)
 ai-workspace/         build prompts, Phase 1 findings, progress notes, screenshots
 ```
 
+## Human-in-the-loop (Phase 6)
+
+The planner flags the final/irreversible task `requires_approval`. The scheduler
+pauses it in `waiting-human` until a human decides via `POST /approve`
+(approve → runs, reject → fails). The UI shows an approval banner, inspector
+buttons, and the gated planet's own `waiting-human` state.
+
 ## Deferred on purpose
 
 Per-worker API-key billing (wire exists, untested until a key is available),
-human-in-the-loop gates as real blocking approvals (state exists), replay
-(task_events already logs everything), nicer planet sprites (swap seam is in
+replay (task_events already logs everything), nicer planet sprites (swap seam is in
 `web/src/Planet.tsx`).

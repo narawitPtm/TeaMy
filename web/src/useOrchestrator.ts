@@ -42,12 +42,20 @@ export function useOrchestrator() {
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const applySnapshot = useCallback((snap: Snapshot) => {
-    setState((s) => ({
-      ...s,
-      floors: snap.floors,
-      workers: snap.workers,
-      tasks: Object.fromEntries(snap.tasks.map((t) => [t.id, t])),
-    }));
+    setState((s) => {
+      // Derive worker<->task bindings from the snapshot (tasks persist their
+      // assigned worker_id) so a client connecting mid-run still maps planets to
+      // their current task — not only from live events it may have missed.
+      const workerTask = { ...s.workerTask };
+      for (const t of snap.tasks) if (t.worker_id) workerTask[t.worker_id] = t.id;
+      return {
+        ...s,
+        floors: snap.floors,
+        workers: snap.workers,
+        tasks: Object.fromEntries(snap.tasks.map((t) => [t.id, t])),
+        workerTask,
+      };
+    });
   }, []);
 
   const applyEvent = useCallback((ev: EngineEvent) => {
@@ -72,6 +80,9 @@ export function useOrchestrator() {
           depends_on: [],
           session_id: null,
           retries: 0,
+          requires_approval: 0,
+          approval: null,
+          worker_id: ev.workerId ?? null,
         };
       }
 
@@ -163,5 +174,13 @@ export function useOrchestrator() {
     [refresh],
   );
 
-  return { state, sendCommand, saveApiKey };
+  const approve = useCallback(async (taskId: string, approved: boolean) => {
+    return fetch("/approve", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ taskId, approved }),
+    }).then((r) => r.json());
+  }, []);
+
+  return { state, sendCommand, saveApiKey, approve };
 }

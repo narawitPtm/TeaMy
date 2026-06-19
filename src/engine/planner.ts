@@ -20,6 +20,7 @@ interface PlannedTask {
   model: string;
   input: string; // the static part of the instruction (deps get injected later)
   depends_on: string[]; // keys of other planned tasks
+  requires_approval?: boolean; // gate in 'waiting-human' before running
 }
 
 const PLAN_SYSTEM_PROMPT = `You are an orchestrator that decomposes a command into a task graph (a DAG).
@@ -35,6 +36,10 @@ Rules (HARD constraints):
   "claude-haiku-4-5" for short/mechanical/checking work.
 - "specialize" is a short role label (e.g. "writer", "analyzer", "researcher",
   "summarizer", "coder").
+- Set "requires_approval": true for any task that finalizes, publishes, sends,
+  or produces the single user-facing FINAL result — so a human can approve it
+  before it runs. Use it sparingly (typically just the final task). All other
+  tasks should set false.
 
 Output ONLY a JSON object, no prose, of this exact shape:
 {
@@ -45,7 +50,8 @@ Output ONLY a JSON object, no prose, of this exact shape:
       "system_prompt": "...the worker's role/system prompt...",
       "model": "claude-sonnet-4-6",
       "input": "...what this task should do...",
-      "depends_on": []
+      "depends_on": [],
+      "requires_approval": false
     }
   ]
 }`;
@@ -125,6 +131,7 @@ export async function plan(
       input: t.input,
       status: "idle",
       dependsOn: [], // wired in the next pass once ids exist
+      requiresApproval: Boolean(t.requires_approval),
     });
     keyToId.set(t.key, row.id);
     log(`[planner] created ${row.id} (${t.specialize}, ${t.model})`);

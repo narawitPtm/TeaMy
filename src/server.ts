@@ -95,6 +95,23 @@ app.post("/settings/api-key", (req, res) => {
   res.json({ apiKeySet: true }); // never echo the value
 });
 
+// Human-in-the-loop: approve or reject a task waiting in 'waiting-human'.
+app.post("/approve", (req, res) => {
+  const taskId = (req.body?.taskId ?? "").toString();
+  const approved = Boolean(req.body?.approved);
+  const task = dao.getTask(taskId);
+  if (!task) {
+    res.status(404).json({ error: `no such task: ${taskId}` });
+    return;
+  }
+  if (task.status !== "waiting-human") {
+    res.status(409).json({ error: `task ${taskId} is not waiting for approval (status: ${task.status})` });
+    return;
+  }
+  dao.setApproval(taskId, approved ? "approved" : "rejected");
+  res.json({ taskId, decision: approved ? "approved" : "rejected" });
+});
+
 let busy = false;
 app.post("/command", (req, res) => {
   const command = (req.body?.command ?? "").toString().trim();
