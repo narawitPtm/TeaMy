@@ -19,7 +19,7 @@ import { openDb } from "./db/schema.js";
 import { Dao } from "./db/dao.js";
 import type { EngineEvent } from "./engine/events.js";
 import { makeEmitter } from "./engine/events.js";
-import { runCommand } from "./engine/run.js";
+import { runCommand, superviseFloor } from "./engine/run.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
 const SECRET_KEYS = new Set(["ANTHROPIC_API_KEY"]);
@@ -201,6 +201,38 @@ app.delete("/floors/:id", (req, res) => {
   emit({ taskId: "-", floorId: id, workerId: null, type: "floor-deleted", status: null, payload: { id } });
   res.json({ removed: id });
 });
+
+// Retry a failed task: reset it and re-supervise the floor (no re-planning).
+app.post("/tasks/:id/retry", (req, res) => {
+  const task = dao.getTask(req.params.id);
+  if (!task) {
+    res.status(404).json({ error: `no such task: ${req.params.id}` });
+    return;
+  }
+  if (task.status !== "failed") {
+    res.status(409).json({ error: `task is '${task.status}', not failed` });
+    return;
+  }
+  if (busyFloors.has(task.floor_id)) {
+    res.status(409).json({ error: "team is already running" });
+    return;
+  }
+  dao.setRetries(task.id, 0);
+  dao.clearApproval(task.id);
+  const retrying = dao.setTaskStatus(task.id, "retrying"); // failed -> retrying
+  dao.setTaskStatus(retrying.id, "queued"); //                retrying -> queued
+  dao.appendEvent(task.id, "status-change", { from: "failed", to: "queued", manualRetry: true });
+
+  const floor = dao.getFloor(task.floor_id)!;
+  busyFloors.add(floor.id);
+  superviseFloor({ dao, floor, emit, concurrency: 2 })
+    .then((r) => emit({ taskId: "-", floorId: floor.id, workerId: null, type: "run-complete", status: null, payload: { tasks: r.tasks.length, failed: r.failed.length } }))
+    .catch((err) => emit({ taskId: "-", floorId: floor.id, workerId: null, type: "run-error", status: null, payload: { error: err instanceof Error ? err.message : String(err) } }))
+    .finally(() => busyFloors.delete(floor.id));
+
+  res.json({ retrying: task.id });
+});
+
 app.post("/command", (req, res) => {
   const command = (req.body?.command ?? "").toString().trim();
   const floorId = (req.body?.floorId ?? defaultFloor.id).toString();

@@ -197,6 +197,10 @@ export function useOrchestrator() {
     return r;
   }, [refresh]);
 
+  const retryTask = useCallback(async (taskId: string) => {
+    return fetch(`/tasks/${encodeURIComponent(taskId)}/retry`, { method: "POST" }).then((r) => r.json());
+  }, []);
+
   const approve = useCallback(async (taskId: string, approved: boolean) => {
     return fetch("/approve", {
       method: "POST",
@@ -205,5 +209,5 @@ export function useOrchestrator() {
     }).then((r) => r.json());
   }, []);
 
-  return { state, sendCommand, saveApiKey, approve, createFloor, removeFloor };
+  return { state, sendCommand, saveApiKey, approve, createFloor, removeFloor, retryTask };
 }

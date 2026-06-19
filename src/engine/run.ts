@@ -65,6 +65,25 @@ export function provisionWorkers(
   }
 }
 
+/** Supervise existing board tasks for a floor (no planning) — used by retry. */
+export async function superviseFloor(args: {
+  dao: Dao;
+  floor: Floor;
+  emit: (e: Omit<EngineEvent, "ts">) => EngineEvent;
+  concurrency?: number;
+}): Promise<RunResult> {
+  const { dao, floor, emit, concurrency = 2 } = args;
+  recoverStuck(dao, floor.id, emit);
+  const scheduler = new Scheduler(dao, { floorId: floor.id, concurrency, emit });
+  await scheduler.supervise();
+  const all = dao.listTasks(floor.id);
+  const hasDependent = new Set<string>();
+  for (const t of all) for (const d of t.depends_on) hasDependent.add(d);
+  const leaves = all.filter((t) => !hasDependent.has(t.id));
+  const failed = all.filter((t) => t.status === "failed");
+  return { tasks: all, leaves, failed };
+}
+
 export async function runCommand(args: {
   dao: Dao;
   floor: Floor;

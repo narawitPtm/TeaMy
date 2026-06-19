@@ -68,19 +68,31 @@ export function Planet({ x, y, r = 26, status, name, model, spriteSeed, selected
       style={{ cursor: onClick ? "pointer" : "default" }}
     >
       <g className={`planet anim-${v.anim}`}>
-      {/* glow halo */}
-      <circle r={r + 8} fill={v.glow} opacity={status === "idle" ? 0 : 0.18} />
+      {/* glow halo (breathes gently while running) */}
+      <circle
+        className={status === "running" ? "halo halo-breathe" : "halo"}
+        r={r + 8}
+        fill={v.glow}
+        opacity={status === "idle" ? 0 : 0.16}
+      />
 
-      {/* signal-wave rings for running (expanding + fading) */}
-      {v.rings && (
-        <g className="rings" stroke={v.glow} fill="none" strokeWidth={2}>
-          <circle r={r} className="ring ring1" />
-          <circle r={r} className="ring ring2" />
-          <circle r={r} className="ring ring3" />
+      {/* running: a thin arc that slowly tracks around the planet (telescope-like) */}
+      {status === "running" && (
+        <g className="track">
+          <circle r={r + 9} fill="none" stroke={v.glow} strokeWidth={1} opacity={0.18} />
+          <circle
+            className="track-arc"
+            r={r + 9}
+            fill="none"
+            stroke={v.glow}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeDasharray={`${(r + 9) * 0.9} ${(r + 9) * 6}`}
+          />
         </g>
       )}
 
-      {/* retrying spinner arc */}
+      {/* retrying spinner arc (distinct: warmer, faster) */}
       {status === "retrying" && (
         <circle
           className="spinner"

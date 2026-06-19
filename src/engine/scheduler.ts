@@ -188,6 +188,9 @@ export class Scheduler {
         costUsd: outcome.costUsd,
       });
     } else {
+      // Persist the error onto the task so the inspector can show it after a
+      // reload (live events alone don't survive a page refresh).
+      this.dao.setTaskOutput(task.id, `⚠ error: ${outcome.error ?? "failed"}`);
       // running -> failed, then maybe failed -> retrying -> queued.
       const failed = this.transition(this.dao.getTask(task.id)!, "failed", {
         error: outcome.error,

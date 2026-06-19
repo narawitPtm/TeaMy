@@ -9,7 +9,7 @@ import type { NewTeamConfig, Task } from "./types";
 const ACTIVE: Task["status"][] = ["queued", "running", "blocked", "waiting-human", "retrying"];
 
 export default function App() {
-  const { state, sendCommand, saveApiKey, approve, createFloor, removeFloor } = useOrchestrator();
+  const { state, sendCommand, saveApiKey, approve, createFloor, removeFloor, retryTask } = useOrchestrator();
   const [command, setCommand] = useState(
     "Research three deep-sea creatures, write a fun fact about each, then combine them into one blurb and give it a catchy title.",
   );
@@ -39,6 +39,20 @@ export default function App() {
   const selWorker = state.workers.find((w) => w.id === selectedWorker) ?? null;
   const selTask = selWorker ? state.tasks[state.workerTask[selWorker.id]] : undefined;
   const selEvents = selTask ? state.events.filter((e) => e.taskId === selTask.id) : [];
+  // Surface the failure reason from the latest error / failed event payload.
+  const selError =
+    selTask?.status === "failed"
+      ? (() => {
+          const ev = [...selEvents].reverse().find(
+            (e) => e.type === "error" || (e.type === "status-change" && e.status === "failed"),
+          );
+          const p = ev?.payload as { error?: string; decision?: string } | undefined;
+          const fromEvent = p?.error ?? (p?.decision ? `rejected by human (${p.decision})` : null);
+          // Fall back to the persisted error stored on the task (survives reload).
+          const fromTask = selTask.output?.startsWith("⚠ error:") ? selTask.output.replace("⚠ error: ", "") : null;
+          return fromEvent ?? fromTask;
+        })()
+      : null;
 
   const dispatch = async () => {
     if (!command.trim()) return;
@@ -227,6 +241,13 @@ export default function App() {
                 <div className="ins-approve">
                   <button className="ok" onClick={() => approve(selTask.id, true)}>Approve</button>
                   <button className="no" onClick={() => approve(selTask.id, false)}>Reject</button>
+                </div>
+              )}
+              {selTask.status === "failed" && (
+                <div className="ins-error">
+                  <div className="ins-label" style={{ marginTop: 10 }}>error</div>
+                  <pre className="errbox">{selError ?? "failed (no detail captured)"}</pre>
+                  <button className="primary retry" onClick={() => retryTask(selTask.id)}>↻ Retry task</button>
                 </div>
               )}
               <div className="ins-label">latest output</div>

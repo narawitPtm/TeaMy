@@ -314,6 +314,14 @@ export class Dao {
     return this.getTask(id)!.retries;
   }
 
+  setRetries(id: string, n: number): void {
+    this.db.prepare(`UPDATE tasks SET retries = ? WHERE id = ?`).run(n, id);
+  }
+
+  clearApproval(id: string): void {
+    this.db.prepare(`UPDATE tasks SET approval = NULL WHERE id = ?`).run(id);
+  }
+
   // --- task_events (append-only) ------------------------------------------
   appendEvent(taskId: string, type: string, payload: unknown): TaskEvent {
     const info = this.db

@@ -28,7 +28,7 @@ export interface StateVisual {
 export const STATE_VISUALS: Record<TaskStatus, StateVisual> = {
   idle: { color: "#3a4150", glow: "transparent", anim: "still", label: "idle" },
   queued: { color: "#5566aa", glow: "#7d8fd6", anim: "pulse-faint", label: "queued" },
-  running: { color: "#39c0ff", glow: "#39c0ff", anim: "waves", label: "running", rings: true },
+  running: { color: "#39c0ff", glow: "#39c0ff", anim: "settled", label: "running" },
   blocked: { color: "#e0a32e", glow: "#e0a32e", anim: "pulse-amber", label: "blocked" },
   "waiting-human": {
     color: "#b06cff",
