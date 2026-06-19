@@ -45,6 +45,22 @@ button:disabled { opacity: 0.45; cursor: default; }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
 .legend .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
 
+/* ---- replay scrubber ------------------------------------------------------ */
+.replay-toggle { background: #3a3050; }
+.replay { margin-top: 10px; }
+.replay-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px 10px 0 0; padding: 8px 12px; font-size: 13px;
+}
+.replay-bar strong { color: #b6a6ff; }
+.replay-bar button { background: #2a64c4; padding: 5px 10px; font-size: 12px; }
+.replay-bar .replay-close { margin-left: auto; background: #2f9e54; }
+.replay .stage { border-radius: 0 0 12px 12px; margin-top: 0; }
+.scrub { flex: 1 1 240px; accent-color: #8fb6ff; cursor: pointer; }
+.counter { color: var(--muted); font-family: ui-monospace, monospace; font-size: 11px; min-width: 220px; }
+.replay-loading { padding: 30px; color: var(--muted); }
+
 /* ---- human-in-the-loop approvals ----------------------------------------- */
 .approvals {
   margin-top: 10px; display: flex; flex-direction: column; gap: 6px;

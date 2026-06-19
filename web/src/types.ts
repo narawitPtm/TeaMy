@@ -59,6 +59,22 @@ export interface EngineEvent {
   ts: string;
 }
 
+export interface HistoryEvent {
+  id: number;
+  taskId: string;
+  type: string;
+  status: TaskStatus | null;
+  ts: string;
+}
+
+export interface History {
+  floor: Floor;
+  floors: Floor[];
+  workers: Worker[];
+  tasks: Task[];
+  events: HistoryEvent[];
+}
+
 export type WsMessage =
   | { kind: "snapshot"; data: Snapshot }
   | { kind: "event"; data: EngineEvent };

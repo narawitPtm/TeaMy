@@ -20,6 +20,7 @@ build: the original phase prompts, the de-risking findings, and this log.
 | 5 — Frontend | React/Vite side-view space scene (radial: sun + planets) | ✅ done & verified |
 | 6 — Human-in-the-loop | `waiting-human` as a real blocking approval (engine pause + approve/reject) | ✅ done & verified |
 | 7 — Asset polish | swap placeholder circles for generated planet sprites via the seam | ✅ done & verified |
+| 8 — Replay | scrubber that re-plays a run from task_events | ✅ done & verified |
 
 Full vertical slice works: command in → orchestrator plans → workers run on
 chosen models → state persists in SQLite → browser shows it live.
@@ -66,8 +67,10 @@ chosen models → state persists in SQLite → browser shows it live.
 
 - [ ] Per-worker API-key billing — exercise the `apiKey` path once a key exists.
 - [x] Human-in-the-loop gates — DONE in Phase 6 (engine pause + approve/reject).
-- [ ] Replay — task_events already logs everything; add a scrubber that
-      re-plays a run.
+- [x] Replay — DONE in Phase 8. `GET /history` returns the floor's task_events
+      chronologically; `web/src/Replay.tsx` reconstructs the scene at any playhead
+      (slider + play/restart), reusing `<Scene>`. Worker↔planet binding from the
+      persisted `worker_id`; beams/state replay exactly.
 - [x] Asset polish — DONE in Phase 7. 8 generated planet sprites
       (`web/scripts/gen-planets.mjs` → `web/public/assets/planets/planet-*.svg`),
       loaded through the `PlanetSprite` seam by a stable per-worker hash. State

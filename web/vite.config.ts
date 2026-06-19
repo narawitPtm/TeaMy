@@ -8,6 +8,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/state": "http://localhost:4000",
+      "/history": "http://localhost:4000",
       "/command": "http://localhost:4000",
       "/approve": "http://localhost:4000",
       "/settings": "http://localhost:4000",

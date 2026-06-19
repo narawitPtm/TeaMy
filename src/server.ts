@@ -80,6 +80,31 @@ app.get("/state", (_req, res) => {
   res.json(snapshot());
 });
 
+// Replay history: the recorded task_events for a floor, in chronological order,
+// plus the (final) tasks/workers so a client can reconstruct the scene at any
+// point in time. Powers the Phase 8 replay scrubber.
+app.get("/history", (req, res) => {
+  const floorId = (req.query.floorId ?? defaultFloor.id).toString();
+  const floor = dao.getFloor(floorId);
+  if (!floor) {
+    res.status(404).json({ error: `no such floor: ${floorId}` });
+    return;
+  }
+  const tasks = dao.listTasks(floorId);
+  const workers = dao.listWorkers(floorId);
+  const events = tasks
+    .flatMap((t) =>
+      dao.listEvents(t.id).map((e) => {
+        const p = e.payload as { to?: string } | null;
+        const status =
+          e.type === "status-change" ? (p?.to ?? null) : e.type === "finish" ? "done" : null;
+        return { id: e.id, taskId: t.id, type: e.type, status, ts: e.ts };
+      }),
+    )
+    .sort((a, b) => a.id - b.id); // global autoincrement id == chronological
+  res.json({ floor, floors: [floor], workers, tasks, events });
+});
+
 app.get("/settings", (_req, res) => {
   res.json({ apiKeySet: dao.hasSetting("ANTHROPIC_API_KEY") });
 });

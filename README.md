@@ -98,8 +98,16 @@ through the `PlanetSprite` swap seam in `web/src/Planet.tsx`. State animation
 Deep-Fold PNGs is just repointing the seam's `href`. Gallery: `/gallery.html`.
 Regenerate: `cd web && npm run gen-planets`.
 
+## Replay (Phase 8)
+
+`GET /history?floorId=` returns the floor's `task_events` in chronological order.
+The UI's Replay scrubber (`web/src/Replay.tsx`, toggled with the ⏪ Replay button)
+reconstructs the scene at any playhead — drag the slider or press play — reusing
+the same `<Scene>`. Worker↔planet binding comes from the persisted `worker_id`,
+so beams and state replay exactly as they happened live.
+
 ## Deferred on purpose
 
 Per-worker API-key billing (wire exists, untested until a key is available),
-replay (task_events already logs everything), more planet sprites (swap seam is in
+more planet sprites (swap seam is in
 `web/src/Planet.tsx`).

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useOrchestrator } from "./useOrchestrator";
 import { Scene } from "./Scene";
+import { Replay } from "./Replay";
 import { ALL_STATES, STATE_VISUALS } from "./state-visuals";
 
 export default function App() {
@@ -11,6 +12,8 @@ export default function App() {
   const [apiKey, setApiKey] = useState("");
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [replay, setReplay] = useState(false);
+  const floorId = state.floors[0]?.id ?? "floor_main";
 
   const selWorker = state.workers.find((w) => w.id === selectedWorker) ?? null;
   const selTask = selWorker ? state.tasks[state.workerTask[selWorker.id]] : undefined;
@@ -38,7 +41,7 @@ export default function App() {
           placeholder="Enter a command for the orchestrator…"
         />
         <button
-          disabled={sending || !command.trim()}
+          disabled={sending || !command.trim() || replay}
           onClick={async () => {
             setSending(true);
             await sendCommand(command);
@@ -46,6 +49,9 @@ export default function App() {
           }}
         >
           {sending ? "…" : "Dispatch"}
+        </button>
+        <button className="replay-toggle" onClick={() => setReplay((r) => !r)}>
+          {replay ? "● Live" : "⏪ Replay"}
         </button>
 
         <div className="settings">
@@ -98,16 +104,20 @@ export default function App() {
         </div>
       )}
 
-      <div className="stage">
-        <Scene
-          floors={state.floors}
-          workers={state.workers}
-          tasks={state.tasks}
-          workerTask={state.workerTask}
-          selectedWorker={selectedWorker}
-          onSelectWorker={setSelectedWorker}
-        />
-      </div>
+      {replay ? (
+        <Replay floorId={floorId} onClose={() => setReplay(false)} />
+      ) : (
+        <div className="stage">
+          <Scene
+            floors={state.floors}
+            workers={state.workers}
+            tasks={state.tasks}
+            workerTask={state.workerTask}
+            selectedWorker={selectedWorker}
+            onSelectWorker={setSelectedWorker}
+          />
+        </div>
+      )}
 
       {selWorker && (
         <div className="inspector">
