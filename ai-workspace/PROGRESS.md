@@ -22,6 +22,7 @@ build: the original phase prompts, the de-risking findings, and this log.
 | 7 — Asset polish | swap placeholder circles for generated planet sprites via the seam | ✅ done & verified |
 | 8 — Replay | scrubber that re-plays a run from task_events | ✅ done & verified |
 | 9 — Multi-team + Observatory UI | concurrent teams + full-screen pan/zoom star map | ✅ done & verified |
+| 10 — Team config + manual roster | per-team name/instruction/model/cwd/permission; auto vs manual worker roster | ✅ done & verified |
 
 Full vertical slice works: command in → orchestrator plans → workers run on
 chosen models → state persists in SQLite → browser shows it live.

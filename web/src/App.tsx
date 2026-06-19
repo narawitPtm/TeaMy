@@ -166,10 +166,11 @@ export default function App() {
       {!replay && selFloor && (
         <div className="hud teaminfo panel">
           <span className="team-meta">
+            <b>mode</b> {selFloor.mode === "manual" ? "manual roster" : "auto"} ·{" "}
             <b>model</b> {selFloor.model ? selFloor.model.replace("claude-", "") : "auto"} ·{" "}
             <b>perm</b> {selFloor.permission_mode ?? "default"} ·{" "}
             <b>dir</b> {selFloor.cwd ? selFloor.cwd : "sandbox"}
-            {selFloor.instruction ? " · ✎ custom instruction" : ""}
+            {selFloor.instruction ? " · ✎ instruction" : ""}
           </span>
         </div>
       )}

@@ -46,6 +46,8 @@ export function provisionWorkers(
   tasks: Task[],
   log: (m: string) => void = () => {},
 ) {
+  // Manual roster: workers are user-defined; never auto-create new ones.
+  if (floor.mode === "manual") return;
   const seen = new Set(dao.listWorkers(floor.id).map((w) => `${w.role}|${w.model}`));
   for (const t of tasks) {
     const role = t.specialize ?? "worker";

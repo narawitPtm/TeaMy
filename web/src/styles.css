@@ -184,6 +184,12 @@ button.no { background: linear-gradient(180deg, #ff7b7b, #c43b3b); color: #fff; 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
+.roster-head { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 8px; }
+button.ghost.mini { padding: 4px 9px; font-size: 11px; }
+.roster-row { display: grid; grid-template-columns: 1fr 1fr 96px 1.6fr auto; gap: 6px; margin-bottom: 6px; align-items: center; }
+.roster-row input, .roster-row select { padding: 6px 8px; font-size: 12px; }
+.roster-row .x { background: transparent; color: var(--muted); font-size: 16px; padding: 0 4px; }
+
 .team-meta { font-size: 10px; color: var(--muted); display: flex; gap: 8px; align-items: center; white-space: nowrap; }
 .team-meta b { color: #9fb0d0; font-weight: 400; }
 

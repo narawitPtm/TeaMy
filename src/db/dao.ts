@@ -23,6 +23,7 @@ export interface Floor {
   model: string | null; // null/'' = auto
   cwd: string | null;
   permission_mode: PermissionMode | null;
+  mode: "auto" | "manual" | null; // null = auto
 }
 
 export interface Worker {
@@ -32,6 +33,7 @@ export interface Worker {
   role: string | null;
   model: string;
   auth_mode: "max" | "apiKey";
+  system_prompt: string | null;
 }
 
 export interface TaskRow {
@@ -87,12 +89,13 @@ export class Dao {
     model?: string;
     cwd?: string;
     permissionMode?: PermissionMode;
+    mode?: "auto" | "manual";
   }): Floor {
     const id = input.id ?? `floor_${randomUUID().slice(0, 8)}`;
     this.db
       .prepare(
-        `INSERT INTO floors (id, name, team, instruction, model, cwd, permission_mode)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO floors (id, name, team, instruction, model, cwd, permission_mode, mode)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -102,6 +105,7 @@ export class Dao {
         input.model?.trim() || null,
         input.cwd?.trim() || null,
         input.permissionMode ?? null,
+        input.mode ?? "auto",
       );
     return this.getFloor(id)!;
   }
@@ -129,12 +133,13 @@ export class Dao {
     role?: string;
     model: string;
     authMode?: "max" | "apiKey";
+    systemPrompt?: string;
   }): Worker {
     const id = input.id ?? `worker_${randomUUID().slice(0, 8)}`;
     this.db
       .prepare(
-        `INSERT INTO workers (id, floor_id, name, role, model, auth_mode)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO workers (id, floor_id, name, role, model, auth_mode, system_prompt)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -143,6 +148,7 @@ export class Dao {
         input.role ?? null,
         input.model,
         input.authMode ?? "max",
+        input.systemPrompt?.trim() || null,
       );
     return this.getWorker(id)!;
   }

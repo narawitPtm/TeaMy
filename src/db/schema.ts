@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS floors (
   instruction     TEXT,   -- extra orchestrator guidance for this team's plans
   model           TEXT,   -- '' / null = auto (planner picks per task); else forced
   cwd             TEXT,   -- working directory workers operate in (optional)
-  permission_mode TEXT    -- 'default' | 'acceptEdits' | 'bypassPermissions'
+  permission_mode TEXT,   -- 'default' | 'acceptEdits' | 'bypassPermissions'
+  mode            TEXT    -- 'auto' (planner invents roles) | 'manual' (fixed roster)
 );
 
 CREATE TABLE IF NOT EXISTS workers (
@@ -37,7 +38,8 @@ CREATE TABLE IF NOT EXISTS workers (
   name      TEXT NOT NULL,
   role      TEXT,
   model     TEXT NOT NULL,
-  auth_mode TEXT NOT NULL DEFAULT 'max' CHECK (auth_mode IN ('max','apiKey'))
+  auth_mode TEXT NOT NULL DEFAULT 'max' CHECK (auth_mode IN ('max','apiKey')),
+  system_prompt TEXT   -- the worker's own persona (manual roster); null = use task's
 );
 CREATE INDEX IF NOT EXISTS idx_workers_floor ON workers(floor_id);
 
@@ -112,7 +114,12 @@ function migrate(db: DB): void {
     ["model", "ALTER TABLE floors ADD COLUMN model TEXT"],
     ["cwd", "ALTER TABLE floors ADD COLUMN cwd TEXT"],
     ["permission_mode", "ALTER TABLE floors ADD COLUMN permission_mode TEXT"],
+    ["mode", "ALTER TABLE floors ADD COLUMN mode TEXT"],
   ] as const) {
     if (!fcols.has(col)) db.exec(ddl);
   }
+  const wcols = new Set(
+    (db.prepare(`PRAGMA table_info(workers)`).all() as Array<{ name: string }>).map((c) => c.name),
+  );
+  if (!wcols.has("system_prompt")) db.exec(`ALTER TABLE workers ADD COLUMN system_prompt TEXT`);
 }

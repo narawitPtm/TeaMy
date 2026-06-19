@@ -147,6 +147,7 @@ app.post("/floors", (req, res) => {
   const model = (b.model ?? "").toString().trim();
   const cwd = (b.cwd ?? "").toString().trim();
   const pm = (b.permissionMode ?? "").toString();
+  const roster = Array.isArray(b.workers) ? b.workers : [];
   const floor = dao.createFloor({
     name,
     team,
@@ -154,7 +155,22 @@ app.post("/floors", (req, res) => {
     model,
     cwd,
     permissionMode: PERMISSION_MODES.has(pm) ? (pm as "default" | "acceptEdits" | "bypassPermissions") : undefined,
+    mode: roster.length ? "manual" : "auto",
   });
+  // Manual roster: create the user-defined workers up front.
+  for (const w of roster) {
+    const role = (w?.role ?? "").toString().trim();
+    const name2 = (w?.name ?? role ?? "Worker").toString().trim() || "Worker";
+    const wmodel = (w?.model ?? model ?? "claude-sonnet-4-6").toString().trim() || "claude-sonnet-4-6";
+    if (!role) continue;
+    dao.createWorker({
+      floorId: floor.id,
+      name: name2,
+      role,
+      model: wmodel,
+      systemPrompt: (w?.systemPrompt ?? "").toString(),
+    });
+  }
   emit({
     taskId: "-",
     floorId: floor.id,

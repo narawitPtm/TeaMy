@@ -83,9 +83,23 @@ export async function plan(
 
   // Per-team config: forced model (else orchestrator default) + extra guidance.
   const orchestratorModel = floor.model?.trim() || ORCHESTRATOR_MODEL;
-  const systemPrompt = floor.instruction?.trim()
+
+  // Manual roster: the team has predefined workers; the planner must ASSIGN each
+  // task to one of them (by role) rather than inventing roles.
+  const roster = floor.mode === "manual" ? dao.listWorkers(floor.id) : [];
+  let systemPrompt = floor.instruction?.trim()
     ? `${PLAN_SYSTEM_PROMPT}\n\n## Team-specific guidance (follow this)\n${floor.instruction.trim()}`
     : PLAN_SYSTEM_PROMPT;
+  if (roster.length) {
+    const list = roster
+      .map((w) => `  - role "${w.role ?? w.name}" (${w.name})`)
+      .join("\n");
+    systemPrompt +=
+      `\n\n## Fixed worker roster (HARD constraint)\n` +
+      `This team has a FIXED set of workers. Set each task's "specialize" to EXACTLY ` +
+      `one of these role values — do NOT invent new roles:\n${list}\n` +
+      `Pick the most appropriate worker for each task.`;
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 120_000);
@@ -127,22 +141,29 @@ export async function plan(
   }
 
   // Persist. First pass creates rows (planner key -> db id), second wires deps.
-  // If the team forces a model, override every task's model with it.
+  // Model precedence: team-forced > (manual roster worker's model) > planner's pick.
+  // In manual mode the assigned worker's own persona (system_prompt) wins.
   const forcedModel = floor.model?.trim() || null;
+  const matchWorker = (specialize: string) =>
+    roster.find((w) => (w.role ?? w.name) === specialize) ?? roster[0];
   const keyToId = new Map<string, string>();
   for (const t of parsed.tasks) {
+    const assigned = roster.length ? matchWorker(t.specialize) : undefined;
+    const model = forcedModel ?? assigned?.model ?? t.model;
+    const sysPrompt = assigned?.system_prompt ?? t.system_prompt;
+    const specialize = assigned ? assigned.role ?? assigned.name : t.specialize;
     const row = dao.createTask({
       floorId: floor.id,
-      specialize: t.specialize,
-      systemPrompt: t.system_prompt,
-      model: forcedModel ?? t.model,
+      specialize,
+      systemPrompt: sysPrompt,
+      model,
       input: t.input,
       status: "idle",
       dependsOn: [], // wired in the next pass once ids exist
       requiresApproval: Boolean(t.requires_approval),
     });
     keyToId.set(t.key, row.id);
-    log(`[planner] created ${row.id} (${t.specialize}, ${t.model})`);
+    log(`[planner] created ${row.id} (${specialize}, ${model})`);
   }
 
   const tasks: Task[] = [];

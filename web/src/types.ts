@@ -21,6 +21,14 @@ export interface Floor {
   model: string | null;
   cwd: string | null;
   permission_mode: PermissionMode | null;
+  mode: "auto" | "manual" | null;
+}
+
+export interface RosterWorker {
+  name: string;
+  role: string;
+  model: string;
+  systemPrompt?: string;
 }
 
 export interface NewTeamConfig {
@@ -29,6 +37,7 @@ export interface NewTeamConfig {
   model?: string;
   cwd?: string;
   permissionMode?: PermissionMode;
+  workers?: RosterWorker[];
 }
 
 export interface Worker {
@@ -38,6 +47,7 @@ export interface Worker {
   role: string | null;
   model: string;
   auth_mode: "max" | "apiKey";
+  system_prompt: string | null;
 }
 
 export interface Task {

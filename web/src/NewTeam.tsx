@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { NewTeamConfig, PermissionMode } from "./types";
+import type { NewTeamConfig, PermissionMode, RosterWorker } from "./types";
 
 /**
  * "New Team" configuration dialog. Lets you set everything per team before it's
@@ -34,6 +34,13 @@ export function NewTeam({
   const [model, setModel] = useState("");
   const [cwd, setCwd] = useState("");
   const [permissionMode, setPermissionMode] = useState<PermissionMode>("default");
+  const [workers, setWorkers] = useState<RosterWorker[]>([]);
+
+  const addWorker = () =>
+    setWorkers((w) => [...w, { name: "", role: "", model: "claude-sonnet-4-6", systemPrompt: "" }]);
+  const setWorker = (i: number, patch: Partial<RosterWorker>) =>
+    setWorkers((w) => w.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const delWorker = (i: number) => setWorkers((w) => w.filter((_, j) => j !== i));
 
   return (
     <div className="modal-scrim" onPointerDown={onClose}>
@@ -76,12 +83,41 @@ export function NewTeam({
         <label>Workspace directory <span className="opt">(optional — where workers operate)</span></label>
         <input value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="e.g. C:\\Users\\me\\project (blank = sandbox)" />
 
+        <div className="roster-head">
+          <label style={{ margin: 0 }}>
+            Workers <span className="opt">{workers.length ? "(manual — planner assigns to these)" : "(empty = auto, planner invents roles)"}</span>
+          </label>
+          <button className="ghost mini" onClick={addWorker}>＋ worker</button>
+        </div>
+        {workers.map((w, i) => (
+          <div className="roster-row" key={i}>
+            <input className="rw-name" value={w.name} onChange={(e) => setWorker(i, { name: e.target.value })} placeholder="name (e.g. Frontend)" />
+            <input className="rw-role" value={w.role} onChange={(e) => setWorker(i, { role: e.target.value })} placeholder="role (e.g. frontend)" />
+            <select className="rw-model" value={w.model} onChange={(e) => setWorker(i, { model: e.target.value })}>
+              {MODELS.filter((m) => m.v).map((m) => (
+                <option key={m.v} value={m.v}>{m.v.replace("claude-", "")}</option>
+              ))}
+            </select>
+            <input className="rw-prompt" value={w.systemPrompt} onChange={(e) => setWorker(i, { systemPrompt: e.target.value })} placeholder="persona / system prompt (optional)" />
+            <button className="x" onClick={() => delWorker(i)}>×</button>
+          </div>
+        ))}
+
         <div className="modal-actions">
           <button className="ghost" onClick={onClose}>Cancel</button>
           <button
             className="primary"
             disabled={!name.trim()}
-            onClick={() => onCreate({ name: name.trim(), instruction, model, cwd, permissionMode })}
+            onClick={() =>
+              onCreate({
+                name: name.trim(),
+                instruction,
+                model,
+                cwd,
+                permissionMode,
+                workers: workers.filter((w) => w.role.trim()),
+              })
+            }
           >
             Create team
           </button>

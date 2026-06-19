@@ -108,6 +108,7 @@ export function useOrchestrator() {
               role: tasks[ev.taskId]?.specialize ?? null,
               model: tasks[ev.taskId]?.model ?? "",
               auth_mode: "max",
+              system_prompt: null,
             },
           ];
         }
