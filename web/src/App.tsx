@@ -1,165 +1,207 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOrchestrator } from "./useOrchestrator";
-import { Scene } from "./Scene";
+import { Universe } from "./Universe";
 import { Replay } from "./Replay";
 import { ALL_STATES, STATE_VISUALS } from "./state-visuals";
+import type { Task } from "./types";
+
+const ACTIVE: Task["status"][] = ["queued", "running", "blocked", "waiting-human", "retrying"];
 
 export default function App() {
-  const { state, sendCommand, saveApiKey, approve } = useOrchestrator();
+  const { state, sendCommand, saveApiKey, approve, createFloor } = useOrchestrator();
   const [command, setCommand] = useState(
-    "Research three notable deep-sea creatures, write a fun fact about each, then combine them into one Ocean Trivia blurb and give it a catchy title.",
+    "Research three deep-sea creatures, write a fun fact about each, then combine them into one blurb and give it a catchy title.",
   );
+  const [targetFloor, setTargetFloor] = useState<string>("");
   const [apiKey, setApiKey] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [replay, setReplay] = useState(false);
-  const floorId = state.floors[0]?.id ?? "floor_main";
+  const [focusFloorId, setFocusFloorId] = useState<string | null>(null);
+
+  const floorId = targetFloor || state.floors[0]?.id || "floor_main";
+
+  const runningFloors = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of Object.values(state.tasks)) if (ACTIVE.includes(t.status)) s.add(t.floor_id);
+    return s;
+  }, [state.tasks]);
+
+  const pendingApprovals = useMemo(
+    () => Object.values(state.tasks).filter((t) => t.status === "waiting-human"),
+    [state.tasks],
+  );
 
   const selWorker = state.workers.find((w) => w.id === selectedWorker) ?? null;
   const selTask = selWorker ? state.tasks[state.workerTask[selWorker.id]] : undefined;
-  const selEvents = selTask
-    ? state.events.filter((e) => e.taskId === selTask.id)
-    : [];
-  const pendingApprovals = Object.values(state.tasks).filter(
-    (t) => t.status === "waiting-human",
-  );
+  const selEvents = selTask ? state.events.filter((e) => e.taskId === selTask.id) : [];
+
+  const dispatch = async () => {
+    if (!command.trim()) return;
+    setSending(true);
+    await sendCommand(command, floorId);
+    setSending(false);
+  };
+
+  const addTeam = async () => {
+    const n = state.floors.length + 1;
+    const f = await createFloor(`Team ${n}`);
+    if (f?.id) {
+      setTargetFloor(f.id);
+      setFocusFloorId(f.id);
+    }
+  };
 
   return (
     <div className="app">
-      <header>
-        <h1>Multi-Agent Orchestrator</h1>
-        <span className={`conn ${state.connected ? "on" : "off"}`}>
-          {state.connected ? "● live" : "○ offline"}
-        </span>
+      {replay ? (
+        <Replay floorId={floorId} onClose={() => setReplay(false)} />
+      ) : (
+        <Universe
+          floors={state.floors}
+          workers={state.workers}
+          tasks={state.tasks}
+          workerTask={state.workerTask}
+          runningFloors={runningFloors}
+          selectedWorker={selectedWorker}
+          onSelectWorker={setSelectedWorker}
+          focusFloorId={focusFloorId}
+        />
+      )}
+
+      {/* top-left brand */}
+      <header className="hud brand">
+        <div className="mark" />
+        <div>
+          <h1>OBSERVATORY</h1>
+          <p>
+            multi-agent orchestrator ·{" "}
+            <span className={state.connected ? "on" : "off"}>
+              {state.connected ? "live signal" : "no signal"}
+            </span>
+          </p>
+        </div>
       </header>
 
-      <div className="controls">
-        <input
-          className="cmd"
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          placeholder="Enter a command for the orchestrator…"
-        />
-        <button
-          disabled={sending || !command.trim() || replay}
-          onClick={async () => {
-            setSending(true);
-            await sendCommand(command);
-            setSending(false);
-          }}
-        >
-          {sending ? "…" : "Dispatch"}
+      {/* top-right settings */}
+      <div className="hud topright">
+        <button className="ghost" onClick={() => setShowSettings((s) => !s)}>
+          ⚙ {state.apiKeySet ? "key set" : "no key"}
         </button>
-        <button className="replay-toggle" onClick={() => setReplay((r) => !r)}>
-          {replay ? "● Live" : "⏪ Replay"}
-        </button>
-
-        <div className="settings">
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="ANTHROPIC_API_KEY (write-only)"
-          />
-          <button
-            disabled={!apiKey.trim()}
-            onClick={async () => {
-              await saveApiKey(apiKey);
-              setApiKey("");
-            }}
-          >
-            Save key
-          </button>
-          <span className="keystate">
-            {state.apiKeySet ? "key is set" : "key not set"}
-          </span>
-        </div>
+        {showSettings && (
+          <div className="panel settings-panel">
+            <label>Anthropic API key (write-only)</label>
+            <div className="row">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-ant-…"
+              />
+              <button
+                disabled={!apiKey.trim()}
+                onClick={async () => {
+                  await saveApiKey(apiKey);
+                  setApiKey("");
+                }}
+              >
+                Save
+              </button>
+            </div>
+            <small>{state.apiKeySet ? "A key is stored (never shown)." : "Running on Max — no key needed."}</small>
+          </div>
+        )}
       </div>
 
-      <div className="legend">
-        {ALL_STATES.map((s) => (
-          <span key={s} className="legend-item">
-            <span className="dot" style={{ background: STATE_VISUALS[s].color }} />
-            {STATE_VISUALS[s].label}
-          </span>
-        ))}
-      </div>
-
-      {pendingApprovals.length > 0 && (
-        <div className="approvals">
+      {/* approvals toast stack (top-center) */}
+      {pendingApprovals.length > 0 && !replay && (
+        <div className="hud approvals">
           {pendingApprovals.map((t) => (
-            <div key={t.id} className="approval-row">
-              <span className="needs">needs you</span>
-              <span className="atask">
-                {t.specialize ?? "task"} · {t.id}
-              </span>
-              <button className="approve" onClick={() => approve(t.id, true)}>
-                Approve
-              </button>
-              <button className="reject" onClick={() => approve(t.id, false)}>
-                Reject
-              </button>
+            <div key={t.id} className="panel approval">
+              <span className="needs">◉ needs you</span>
+              <span className="atask">{t.specialize ?? "task"}</span>
+              <button className="ok" onClick={() => approve(t.id, true)}>Approve</button>
+              <button className="no" onClick={() => approve(t.id, false)}>Reject</button>
             </div>
           ))}
         </div>
       )}
 
-      {replay ? (
-        <Replay floorId={floorId} onClose={() => setReplay(false)} />
-      ) : (
-        <div className="stage">
-          <Scene
-            floors={state.floors}
-            workers={state.workers}
-            tasks={state.tasks}
-            workerTask={state.workerTask}
-            selectedWorker={selectedWorker}
-            onSelectWorker={setSelectedWorker}
-          />
+      {/* legend (bottom-left) */}
+      {!replay && (
+        <div className="hud legend panel">
+          {ALL_STATES.map((s) => (
+            <span key={s} className="li">
+              <span className="dot" style={{ background: STATE_VISUALS[s].color }} />
+              {STATE_VISUALS[s].label}
+            </span>
+          ))}
         </div>
       )}
 
-      {selWorker && (
-        <div className="inspector">
-          <div className="inspector-head">
-            <strong>{selWorker.name}</strong> · {selWorker.model} · {selWorker.auth_mode}
-            <button className="close" onClick={() => setSelectedWorker(null)}>
-              ×
-            </button>
+      {/* command console (bottom-center) */}
+      {!replay && (
+        <div className="hud console panel">
+          <select value={floorId} onChange={(e) => setTargetFloor(e.target.value)} className="team-sel">
+            {state.floors.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+                {runningFloors.has(f.id) ? " ●" : ""}
+              </option>
+            ))}
+          </select>
+          <input
+            className="cmd"
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && dispatch()}
+            placeholder="command for the orchestrator…"
+          />
+          <button className="primary" disabled={sending || runningFloors.has(floorId)} onClick={dispatch}>
+            {sending ? "…" : runningFloors.has(floorId) ? "running" : "Dispatch"}
+          </button>
+          <button className="ghost" onClick={addTeam}>＋ Team</button>
+          <button className="ghost" onClick={() => setReplay(true)}>⏪ Replay</button>
+        </div>
+      )}
+
+      {/* inspector (right) */}
+      {selWorker && !replay && (
+        <aside className="hud inspector panel">
+          <div className="ins-head">
+            <strong>{selWorker.name}</strong>
+            <button className="x" onClick={() => setSelectedWorker(null)}>×</button>
           </div>
+          <div className="meta">{selWorker.model} · {selWorker.auth_mode}</div>
           {selTask ? (
             <>
-              <div className="kv">task: {selTask.id} · <em>{selTask.status}</em></div>
-              <div className="kv">specialize: {selTask.specialize ?? "—"}</div>
+              <div className="meta">
+                <span className="chip" data-s={selTask.status}>{selTask.status}</span>
+                <span>{selTask.id}</span>
+              </div>
               {selTask.status === "waiting-human" && (
-                <div className="approve-inline">
-                  <span className="needs">⏳ awaiting your approval</span>
-                  <button className="approve" onClick={() => approve(selTask.id, true)}>
-                    Approve
-                  </button>
-                  <button className="reject" onClick={() => approve(selTask.id, false)}>
-                    Reject
-                  </button>
+                <div className="ins-approve">
+                  <button className="ok" onClick={() => approve(selTask.id, true)}>Approve</button>
+                  <button className="no" onClick={() => approve(selTask.id, false)}>Reject</button>
                 </div>
               )}
-              <div className="output">
-                <div className="muted">latest output</div>
-                <pre>{selTask.output ?? "(none yet)"}</pre>
-              </div>
-              <div className="muted">event log ({selEvents.length})</div>
-              <div className="eventlog">
-                {selEvents.slice(-40).map((e, i) => (
-                  <div key={i} className="evrow">
-                    <span className="evt">{e.type}</span>
-                    <span className="evs">{e.status ?? ""}</span>
+              <div className="ins-label">latest output</div>
+              <pre className="out">{selTask.output ?? "—"}</pre>
+              <div className="ins-label">events ({selEvents.length})</div>
+              <div className="evlog">
+                {selEvents.slice(-30).map((e, i) => (
+                  <div key={i} className="ev">
+                    <span className="t">{e.type}</span>
+                    <span className="s">{e.status ?? ""}</span>
                   </div>
                 ))}
               </div>
             </>
           ) : (
-            <div className="muted">no task bound to this worker yet</div>
+            <div className="meta">no task bound yet</div>
           )}
-        </div>
+        </aside>
       )}
     </div>
   );

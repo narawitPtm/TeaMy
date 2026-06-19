@@ -137,7 +137,24 @@ app.post("/approve", (req, res) => {
   res.json({ taskId, decision: approved ? "approved" : "rejected" });
 });
 
-let busy = false;
+// Create a new team (floor). Each floor runs its own engine concurrently.
+app.post("/floors", (req, res) => {
+  const name = (req.body?.name ?? "").toString().trim() || "New Team";
+  const team = (req.body?.team ?? "").toString().trim() || undefined;
+  const floor = dao.createFloor({ name, team });
+  emit({
+    taskId: "-",
+    floorId: floor.id,
+    workerId: null,
+    type: "floor-created",
+    status: null,
+    payload: { floor },
+  });
+  res.json({ floor });
+});
+
+// Per-floor busy guard — different floors run concurrently, same floor serializes.
+const busyFloors = new Set<string>();
 app.post("/command", (req, res) => {
   const command = (req.body?.command ?? "").toString().trim();
   const floorId = (req.body?.floorId ?? defaultFloor.id).toString();
@@ -150,11 +167,11 @@ app.post("/command", (req, res) => {
     res.status(404).json({ error: `no such floor: ${floorId}` });
     return;
   }
-  if (busy) {
-    res.status(409).json({ error: "engine busy; one run at a time in this PoC" });
+  if (busyFloors.has(floorId)) {
+    res.status(409).json({ error: `team ${floorId} is already running a command` });
     return;
   }
-  busy = true;
+  busyFloors.add(floorId);
 
   // Fire-and-forget; progress is observed via the WebSocket stream.
   runCommand({ dao, floor, command, emit, concurrency: 2, log: (m) => console.error(m) })
@@ -179,7 +196,7 @@ app.post("/command", (req, res) => {
       });
     })
     .finally(() => {
-      busy = false;
+      busyFloors.delete(floorId);
     });
 
   res.json({ accepted: true, floorId: floor.id });

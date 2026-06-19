@@ -148,7 +148,8 @@ export function useOrchestrator() {
           if (refreshTimer.current) clearTimeout(refreshTimer.current);
           refreshTimer.current = setTimeout(() => void refresh(), 400);
         }
-        if (ev.type === "run-complete" || ev.type === "run-error") void refresh();
+        if (ev.type === "run-complete" || ev.type === "run-error" || ev.type === "floor-created")
+          void refresh();
       }
     };
     return () => ws.close();
@@ -174,6 +175,16 @@ export function useOrchestrator() {
     [refresh],
   );
 
+  const createFloor = useCallback(async (name: string) => {
+    const r = await fetch("/floors", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    }).then((x) => x.json());
+    await refresh();
+    return r.floor;
+  }, [refresh]);
+
   const approve = useCallback(async (taskId: string, approved: boolean) => {
     return fetch("/approve", {
       method: "POST",
@@ -182,5 +193,5 @@ export function useOrchestrator() {
     }).then((r) => r.json());
   }, []);
 
-  return { state, sendCommand, saveApiKey, approve };
+  return { state, sendCommand, saveApiKey, approve, createFloor };
 }

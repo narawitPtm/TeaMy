@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { History, Task } from "./types";
-import { Scene } from "./Scene";
+import { Cluster } from "./Cluster";
 
 /**
- * Phase 8 — replay scrubber.
- *
- * Pure view: fetches the recorded task_events for the floor (GET /history) and
- * reconstructs the scene at any point on the timeline. Dragging the slider (or
- * pressing play) sets a "playhead"; each task's status is the latest
- * status-change at or before the playhead. Worker↔planet binding comes from the
- * persisted task.worker_id, so planets light up exactly as they did live.
- *
- * It contains NO engine logic — it just re-derives past state from the log.
+ * Replay scrubber — pure view over recorded task_events. Reconstructs the team's
+ * star system at any point on the timeline (slider / play / restart). No engine
+ * logic: status is the latest status-change at-or-before the playhead, planet
+ * binding from the persisted worker_id, so beams/states replay exactly.
  */
 export function Replay({ floorId, onClose }: { floorId: string; onClose: () => void }) {
   const [hist, setHist] = useState<History | null>(null);
@@ -23,22 +18,20 @@ export function Replay({ floorId, onClose }: { floorId: string; onClose: () => v
       .then((r) => r.json())
       .then((h: History) => {
         setHist(h);
-        setIdx(h.events.length); // start fully resolved
+        setIdx(h.events.length);
       });
   }, [floorId]);
 
-  // Auto-advance while playing.
   useEffect(() => {
     if (!playing || !hist) return;
     if (idx >= hist.events.length) {
       setPlaying(false);
       return;
     }
-    const t = setTimeout(() => setIdx((i) => i + 1), 320);
+    const t = setTimeout(() => setIdx((i) => i + 1), 300);
     return () => clearTimeout(t);
   }, [playing, idx, hist]);
 
-  // Derive each task's status by replaying status-changes up to the playhead.
   const tasks: Record<string, Task> = useMemo(() => {
     if (!hist) return {};
     const m: Record<string, Task> = Object.fromEntries(
@@ -64,15 +57,44 @@ export function Replay({ floorId, onClose }: { floorId: string; onClose: () => v
   const total = hist.events.length;
   const cur = idx > 0 ? hist.events[idx - 1] : null;
   const stamp = cur ? new Date(cur.ts).toLocaleTimeString() : "start";
+  const anyRunning = Object.values(tasks).some((t) => t.status === "running");
 
   return (
-    <div className="replay">
-      <div className="replay-bar">
-        <strong>Replay</strong>
+    <div className="replay-view">
+      <svg className="replay-svg" viewBox="-460 -360 920 720" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <radialGradient id="planetShade" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="60%" stopColor="rgba(0,0,0,0)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.45)" />
+          </radialGradient>
+          <marker id="beamArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#56e6ff" />
+          </marker>
+          <radialGradient id="sunGlow" cx="40%" cy="35%" r="68%">
+            <stop offset="0%" stopColor="#ffe6a6" />
+            <stop offset="55%" stopColor="#ffb23e" />
+            <stop offset="100%" stopColor="#bf5a16" />
+          </radialGradient>
+        </defs>
+        <Cluster
+          floor={hist.floor}
+          cx={0}
+          cy={0}
+          workers={hist.workers}
+          tasks={tasks}
+          workerTask={workerTask}
+          selectedWorker={null}
+          onSelectWorker={() => {}}
+          running={anyRunning}
+        />
+      </svg>
+
+      <div className="hud replay-bar panel">
+        <strong>REPLAY</strong>
         <button onClick={() => setPlaying((p) => !p)} disabled={idx >= total && !playing}>
-          {playing ? "⏸ Pause" : "▶ Play"}
+          {playing ? "⏸" : "▶"}
         </button>
-        <button onClick={() => { setIdx(0); setPlaying(false); }}>⏮ Restart</button>
+        <button onClick={() => { setIdx(0); setPlaying(false); }}>⏮</button>
         <input
           type="range"
           min={0}
@@ -85,18 +107,7 @@ export function Replay({ floorId, onClose }: { floorId: string; onClose: () => v
           {idx}/{total} · {stamp}
           {cur ? ` · ${cur.type}${cur.status ? " → " + cur.status : ""}` : ""}
         </span>
-        <button className="replay-close" onClick={onClose}>← Live</button>
-      </div>
-
-      <div className="stage">
-        <Scene
-          floors={hist.floors}
-          workers={hist.workers}
-          tasks={tasks}
-          workerTask={workerTask}
-          selectedWorker={null}
-          onSelectWorker={() => {}}
-        />
+        <button className="ok" onClick={onClose}>● Live</button>
       </div>
     </div>
   );

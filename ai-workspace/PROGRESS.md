@@ -21,6 +21,7 @@ build: the original phase prompts, the de-risking findings, and this log.
 | 6 — Human-in-the-loop | `waiting-human` as a real blocking approval (engine pause + approve/reject) | ✅ done & verified |
 | 7 — Asset polish | swap placeholder circles for generated planet sprites via the seam | ✅ done & verified |
 | 8 — Replay | scrubber that re-plays a run from task_events | ✅ done & verified |
+| 9 — Multi-team + Observatory UI | concurrent teams + full-screen pan/zoom star map | ✅ done & verified |
 
 Full vertical slice works: command in → orchestrator plans → workers run on
 chosen models → state persists in SQLite → browser shows it live.
@@ -40,6 +41,24 @@ chosen models → state persists in SQLite → browser shows it live.
   mid-run. Added `requires_approval` + `approval` columns too (idempotent migration).
 - Bug fixed: the Vite dev proxy was missing `/approve`, so the browser's POST
   never reached the backend — added it.
+
+## Phase 9 notes (multi-team + Observatory UI)
+
+Addresses the audit's #1 gap (multi-team unusable) and the "make it a stargazing
+site" ask:
+- **Backend:** per-floor busy guard (different teams run concurrently, same team
+  serializes) + `POST /floors` to create a team. Verified: two teams accepted
+  commands simultaneously.
+- **Frontend — full rewrite of the view layer:** full-screen pannable/zoomable
+  star map (`useViewport` — drag to pan, wheel/buttons to zoom toward cursor,
+  click-vs-pan threshold so planet selection still works). Each team is a star
+  system scattered on a golden-angle spiral; pan/zoom to explore. Parallax
+  `Starfield` (3 depth layers + nebula). Glass HUD (Syne + Space Mono fonts):
+  brand, settings, approval toasts, legend, command console with team selector +
+  "＋ Team", inspector card, replay bar. Sun glow, refined planet glow/beams.
+- Files: `useViewport.ts`, `Starfield.tsx`, `Cluster.tsx`, `Universe.tsx`,
+  rewritten `App.tsx` + `styles.css`; `Replay.tsx` now renders a `Cluster`;
+  removed `Scene.tsx`.
 
 ## Design decisions of note
 
